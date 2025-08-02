@@ -290,7 +290,10 @@ export default function Dashboard() {
         cat.nome.toLowerCase().includes('gas') ||
         cat.nome.toLowerCase().includes('internet') ||
         cat.nome.toLowerCase().includes('fixa') || 
-        cat.nome.toLowerCase().includes('fixo')
+        cat.nome.toLowerCase().includes('fixo') ||
+        cat.nome.toLowerCase().includes('energia') ||
+        cat.nome.toLowerCase().includes('eletrica') ||
+        cat.nome.toLowerCase().includes('elétrica')
       ).map(cat => cat.id)
     : [];
   
