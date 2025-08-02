@@ -48,6 +48,7 @@ export default function Fornecedores() {
     if (editId) {
       // Edição
       const { error } = await supabase.from('fornecedores').update({
+        user_id: user.id,
         nome: formData.nome,
         telefone: formData.telefone,
         email: formData.email,
@@ -65,7 +66,7 @@ export default function Fornecedores() {
     } else {
       // Cadastro
       const { error } = await supabase.from('fornecedores').insert({
-
+        user_id: user.id,
         nome: formData.nome,
         telefone: formData.telefone,
         email: formData.email,

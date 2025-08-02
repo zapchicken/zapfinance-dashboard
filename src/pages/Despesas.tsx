@@ -74,6 +74,7 @@ export default function Despesas() {
     } else {
       // Cadastro
       const { error } = await supabase.from('categorias').insert({
+        user_id: user.id,
         nome: formData.nome,
         tipo: 'despesa',
         categoria: formData.categoria
