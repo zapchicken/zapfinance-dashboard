@@ -103,7 +103,9 @@ export default function Bancos() {
       
       // Adicionar data_inicial apenas se não estiver vazia
       if (formData.data_inicial) {
-        updateData.data_inicial = formData.data_inicial;
+        // Converter para data ISO e pegar apenas a parte da data (YYYY-MM-DD)
+        const dataInicial = new Date(formData.data_inicial + 'T00:00:00').toISOString().split('T')[0];
+        updateData.data_inicial = dataInicial;
       }
       
       const { error, data } = await supabase.from('bancos').update(updateData).eq('id', editId);
@@ -130,7 +132,9 @@ export default function Bancos() {
       
       // Adicionar data_inicial apenas se não estiver vazia
       if (formData.data_inicial) {
-        insertData.data_inicial = formData.data_inicial;
+        // Converter para data ISO e pegar apenas a parte da data (YYYY-MM-DD)
+        const dataInicial = new Date(formData.data_inicial + 'T00:00:00').toISOString().split('T')[0];
+        insertData.data_inicial = dataInicial;
       }
       
       const { error, data } = await supabase.from('bancos').insert(insertData);
@@ -257,7 +261,13 @@ export default function Bancos() {
 
   function formatDateLocal(dateStr: string | null | undefined) {
     if (!dateStr) return '';
-    return new Date(dateStr).toLocaleDateString('pt-BR');
+    try {
+      // Garantir que a data seja tratada corretamente
+      const date = new Date(dateStr + 'T00:00:00');
+      return date.toLocaleDateString('pt-BR');
+    } catch (error) {
+      return dateStr; // Retorna a string original se houver erro
+    }
   }
 
   const filteredBancos = bancos.filter(banco =>
