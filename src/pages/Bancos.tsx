@@ -94,6 +94,7 @@ export default function Bancos() {
     if (editId) {
       // Edição
       const updateData: any = {
+        user_id: user.id,
         nome: formData.nome,
         tipo: formData.tipo,
         saldo_inicial: saldoInicial,
@@ -119,6 +120,7 @@ export default function Bancos() {
     } else {
       // Cadastro
       const insertData: any = {
+        user_id: user.id,
         nome: formData.nome,
         tipo: formData.tipo,
         saldo_inicial: saldoInicial,
