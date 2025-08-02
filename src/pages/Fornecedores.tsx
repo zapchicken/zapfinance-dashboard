@@ -34,7 +34,7 @@ export default function Fornecedores() {
 
   const fetchFornecedores = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('fornecedores').select('*').order('data_cadastro', { ascending: false });
+    const { data, error } = await supabase.from('fornecedores').select('*').order('created_at', { ascending: false });
     if (!error) setFornecedores(data || []);
     setLoading(false);
   };
