@@ -1,0 +1,79 @@
+Resumo das Etapas: Supabase, GitHub e Vercel
+
+1. Supabase (Banco de Dados na Nuvem)
+--------------------------------------
+
+a) Criar Projeto
+- Acesse: https://app.supabase.com/
+- Clique em "New Project"
+- Preencha nome, senha e região
+- Aguarde a criação
+
+b) Obter as credenciais
+- No painel do projeto, vá em Settings > API
+- Copie:
+  - Project URL (ex: https://xxxx.supabase.co)
+  - Anon Public Key
+
+c) Configurar no seu projeto
+- Crie um arquivo .env na raiz do seu projeto com:
+  VITE_SUPABASE_URL=https://xxxx.supabase.co
+  VITE_SUPABASE_ANON_KEY=chave_anon
+- No código, use:
+  import { createClient } from '@supabase/supabase-js';
+  const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY);
+
+d) Criar tabelas
+- Use o SQL Editor do Supabase para criar suas tabelas (copie e cole os comandos SQL).
+
+
+2. GitHub (Controle de Versão e Deploy)
+---------------------------------------
+
+a) Criar repositório
+- Acesse: https://github.com/new
+- Dê um nome e crie o repositório (público ou privado)
+
+b) Conectar seu projeto local
+No terminal, dentro da pasta do projeto:
+  git init
+  git remote add origin https://github.com/SEU_USUARIO/NOME_REPO.git
+  git add .
+  git commit -m "Primeiro commit"
+  git push -u origin main
+
+c) Subir novas alterações
+  git add .
+  git commit -m "Mensagem do commit"
+  git push
+
+
+3. Vercel (Deploy Automático na Web)
+-------------------------------------
+
+a) Criar conta
+- Acesse: https://vercel.com/
+- Faça login com GitHub
+
+b) Importar projeto
+- Clique em "Add New Project"
+- Escolha o repositório do GitHub
+- Siga os passos (Vercel detecta Vite/React automaticamente)
+
+c) Configurar variáveis de ambiente
+- No painel do projeto na Vercel, vá em Settings > Environment Variables
+- Adicione:
+  - VITE_SUPABASE_URL
+  - VITE_SUPABASE_ANON_KEY
+- Use os mesmos valores do seu .env
+
+d) Deploy
+- O deploy é automático a cada push no GitHub
+- O link do site aparece no painel da Vercel
+
+
+Dicas Finais
+------------
+- Sempre que mudar o código, faça git add ., git commit -m "msg" e git push
+- Para atualizar variáveis de ambiente, altere na Vercel e redeploy
+- Use o SQL Editor do Supabase para criar/alterar tabelas 

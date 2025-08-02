@@ -1,0 +1,20 @@
+tipo,descricao,valor,data_vencimento,data_pagamento,data_recebimento,categoria,modalidade,status
+categoria,Água e Gás,despesa,operacional
+categoria,Internet e Telefone,despesa,operacional
+categoria,Aluguel,despesa,operacional
+categoria,Alimentos e Bebidas,despesa,operacional
+categoria,Investimentos,despesa,operacional
+categoria,Ifood,receita,operacional
+categoria,Uber Eats,receita,operacional
+categoria,Rappi,receita,operacional
+modalidade,Ifood,10
+modalidade,Uber Eats,15
+modalidade,Rappi,12
+banco,Nubank,1000.00,2025-01-01
+receita,Ifood Voucher,100.00,2025-08-01,2025-08-01,,investimento,,pago
+receita,Ifood,500.00,2025-08-05,,2025-08-05,Ifood,,pago
+receita,Uber Eats,300.00,2025-08-10,,2025-08-10,Uber Eats,,pago
+despesa,Aluguel,800.00,2025-08-05,2025-08-05,,Aluguel,,pago
+despesa,Água,150.00,2025-08-10,2025-08-10,,Água e Gás,,pago
+despesa,Internet,200.00,2025-08-15,2025-08-15,,Internet e Telefone,,pago
+despesa,Alimentos,400.00,2025-08-20,2025-08-20,,Alimentos e Bebidas,,pago 
