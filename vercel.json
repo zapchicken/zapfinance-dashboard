@@ -5,6 +5,12 @@
   "installCommand": "npm install",
   "devCommand": "npm run dev",
   "regions": ["gru1"],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
   "env": {
     "VITE_SUPABASE_URL": "https://ewznpusfswhjqymtdpgt.supabase.co",
     "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV3em5wdXNmc3doanF5bXRkcGd0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxNTg3NTIsImV4cCI6MjA2OTczNDc1Mn0.aZqVWjcKLYik_tIPy6YFkLIC1UDYbgGMOzWHb3tD3ts"
