@@ -223,6 +223,7 @@ export default function ContasPagar() {
         if (formData.referencia_nota_fiscal) {
           contaParaInserir.referencia_nota_fiscal = formData.referencia_nota_fiscal;
         }
+
         console.log(`Conta ${i + 1} para inserir:`, contaParaInserir);
         contasParaInserir.push(contaParaInserir);
       }
@@ -534,7 +535,7 @@ export default function ContasPagar() {
                       <SelectItem key={i + 1} value={String(i + 1)}>{i + 1}x</SelectItem>
                     ))}
                   </SelectContent>
-                </Select>
+                                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="data_nota_fiscal">Data Nota Fiscal</Label>
@@ -844,11 +845,11 @@ export default function ContasPagar() {
               <div><b>Fornecedor:</b> {fornecedores.find(f => f.id === visualizarConta.fornecedor_id)?.nome || 'Sem fornecedor'}</div>
               <div><b>Valor:</b> R$ {Number(visualizarConta.valor).toFixed(2)}</div>
               <div><b>Vencimento:</b> {new Date(visualizarConta.data_vencimento).toLocaleDateString('pt-BR')}</div>
-              <div><b>Status:</b> {visualizarConta.status}</div>
-              <div><b>Observações:</b> {visualizarConta.observacoes}</div>
-              <div><b>Data Nota Fiscal:</b> {visualizarConta.data_nota_fiscal ? new Date(visualizarConta.data_nota_fiscal).toLocaleDateString('pt-BR') : '-'}</div>
-              <div><b>Referência Nota Fiscal:</b> {visualizarConta.referencia_nota_fiscal || '-'}</div>
-            </div>
+                              <div><b>Status:</b> {visualizarConta.status}</div>
+                <div><b>Observações:</b> {visualizarConta.observacoes}</div>
+                <div><b>Data Nota Fiscal:</b> {visualizarConta.data_nota_fiscal ? new Date(visualizarConta.data_nota_fiscal).toLocaleDateString('pt-BR') : '-'}</div>
+                <div><b>Referência Nota Fiscal:</b> {visualizarConta.referencia_nota_fiscal || '-'}</div>
+              </div>
           )}
         </DialogContent>
       </Dialog>
