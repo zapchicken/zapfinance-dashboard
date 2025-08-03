@@ -23,6 +23,7 @@ export default function ContasPagar() {
     descricao: "",
     categoria_id: "",
     fornecedor_id: "",
+    banco_id: "",
     valor: "",
     data_vencimento: "",
     data_pagamento: "",
@@ -39,12 +40,14 @@ export default function ContasPagar() {
   const [filtroVencimentoInicio, setFiltroVencimentoInicio] = useState('');
   const [filtroVencimentoFim, setFiltroVencimentoFim] = useState('');
   const [filtroHoje, setFiltroHoje] = useState(false);
+  const [bancos, setBancos] = useState<any[]>([]);
   // Removido tipoDespesa pois não existe na tabela
 
   // Lista de despesas removida - agora usa as categorias cadastradas no sistema
 
   useEffect(() => {
     if (user) fetchData();
+    if (user) fetchBancos();
   }, [user]);
 
   const fetchData = async () => {
@@ -78,6 +81,14 @@ export default function ContasPagar() {
   };
 
 
+  const fetchBancos = async () => {
+    const { data, error } = await supabase
+      .from('bancos')
+      .select('*')
+      .eq('ativo', true)
+      .order('nome');
+    if (!error) setBancos(data || []);
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -93,6 +104,11 @@ export default function ContasPagar() {
     console.log('handleSubmit chamado', { editandoConta, formData });
     if (!formData.categoria_id) {
       toast({ title: "Erro", description: "Selecione uma categoria", variant: "destructive" });
+      return;
+    }
+
+    if (!formData.banco_id) {
+      toast({ title: "Erro", description: "Selecione um banco", variant: "destructive" });
       return;
     }
 
@@ -122,6 +138,7 @@ export default function ContasPagar() {
           descricao: formData.descricao,
           categoria_id: formData.categoria_id || null,
           fornecedor_id: formData.fornecedor_id || null,
+          banco_id: formData.banco_id || null,
           valor: valorNumerico,
           data_vencimento: formData.data_vencimento,
           data_pagamento: formData.data_pagamento || null,
@@ -137,7 +154,7 @@ export default function ContasPagar() {
       }
       setEditandoConta(null);
       setIsDialogOpen(false);
-      setFormData({ descricao: "", categoria_id: "", fornecedor_id: "", valor: "", data_vencimento: "", data_pagamento: "", observacoes: "", parcelas: 1, data_nota_fiscal: "", referencia_nota_fiscal: "", tipo_despesa: "operacional" });
+      setFormData({ descricao: "", categoria_id: "", fornecedor_id: "", banco_id: "", valor: "", data_vencimento: "", data_pagamento: "", observacoes: "", parcelas: 1, data_nota_fiscal: "", referencia_nota_fiscal: "", tipo_despesa: "operacional" });
       fetchData();
       toast({ title: 'Sucesso', description: 'Conta atualizada com sucesso!' });
       console.log('Conta atualizada com sucesso!');
@@ -191,6 +208,7 @@ export default function ContasPagar() {
 
         // Adicionar campos obrigatórios
         contaParaInserir.categoria_id = formData.categoria_id;
+        contaParaInserir.banco_id = formData.banco_id;
         
         // Adicionar campos opcionais apenas se não forem vazios
         if (formData.fornecedor_id) {
@@ -463,9 +481,21 @@ export default function ContasPagar() {
                       <SelectItem key={fornecedor.id} value={fornecedor.id}>{fornecedor.nome}</SelectItem>
                     ))}
                   </SelectContent>
+                                </Select>
+              </div>
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="banco">Banco</Label>
+                <Select value={formData.banco_id} onValueChange={(value) => setFormData({...formData, banco_id: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um banco" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {bancos.map(banco => (
+                      <SelectItem key={banco.id} value={banco.id}>{banco.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="valor">Valor</Label>
                 <Input
