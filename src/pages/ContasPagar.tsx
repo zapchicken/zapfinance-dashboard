@@ -187,20 +187,34 @@ export default function ContasPagar() {
         vencimento.setMonth(vencimento.getMonth() + i);
         // Buscar nome da categoria selecionada
         const categoriaSelecionada = categorias.find(c => c.id === formData.categoria_id);
-        const contaParaInserir = {
+        const contaParaInserir: any = {
           user_id: user?.id,
           descricao: categoriaSelecionada ? categoriaSelecionada.nome : 'Sem categoria',
-          categoria_id: formData.categoria_id || null,
-          fornecedor_id: formData.fornecedor_id || null,
-          banco_id: formData.banco_id || null,
           valor: valorParcela,
           data_vencimento: vencimento.toISOString().split('T')[0],
           observacoes: parcelas > 1 ? `${formData.observacoes || ''} Parcela ${i + 1}/${parcelas}`.trim() : formData.observacoes,
-          status: formData.data_pagamento ? 'pago' : 'pendente',
-          data_pagamento: formData.data_pagamento || null,
-          data_nota_fiscal: formData.data_nota_fiscal || null,
-          referencia_nota_fiscal: formData.referencia_nota_fiscal || null
+          status: formData.data_pagamento ? 'pago' : 'pendente'
         };
+
+        // Adicionar campos opcionais apenas se não forem vazios
+        if (formData.categoria_id) {
+          contaParaInserir.categoria_id = formData.categoria_id;
+        }
+        if (formData.fornecedor_id) {
+          contaParaInserir.fornecedor_id = formData.fornecedor_id;
+        }
+        if (formData.banco_id) {
+          contaParaInserir.banco_id = formData.banco_id;
+        }
+        if (formData.data_pagamento) {
+          contaParaInserir.data_pagamento = formData.data_pagamento;
+        }
+        if (formData.data_nota_fiscal) {
+          contaParaInserir.data_nota_fiscal = formData.data_nota_fiscal;
+        }
+        if (formData.referencia_nota_fiscal) {
+          contaParaInserir.referencia_nota_fiscal = formData.referencia_nota_fiscal;
+        }
         console.log(`Conta ${i + 1} para inserir:`, contaParaInserir);
         contasParaInserir.push(contaParaInserir);
       }
