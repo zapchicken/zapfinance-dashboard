@@ -192,19 +192,25 @@ export default function ContasPagar() {
           descricao: categoriaSelecionada ? categoriaSelecionada.nome : 'Sem categoria',
           valor: valorParcela,
           data_vencimento: vencimento.toISOString().split('T')[0],
-          observacoes: parcelas > 1 ? `${formData.observacoes || ''} Parcela ${i + 1}/${parcelas}`.trim() : formData.observacoes,
           status: formData.data_pagamento ? 'pago' : 'pendente'
         };
 
-        // Adicionar campos opcionais apenas se não forem vazios
-        if (formData.categoria_id) {
-          contaParaInserir.categoria_id = formData.categoria_id;
+        // Adicionar observações apenas se não forem vazias
+        const observacoesText = parcelas > 1 
+          ? `${formData.observacoes || ''} Parcela ${i + 1}/${parcelas}`.trim()
+          : formData.observacoes;
+        
+        if (observacoesText && observacoesText.trim()) {
+          contaParaInserir.observacoes = observacoesText;
         }
+
+        // Adicionar campos obrigatórios
+        contaParaInserir.categoria_id = formData.categoria_id;
+        contaParaInserir.banco_id = formData.banco_id;
+        
+        // Adicionar campos opcionais apenas se não forem vazios
         if (formData.fornecedor_id) {
           contaParaInserir.fornecedor_id = formData.fornecedor_id;
-        }
-        if (formData.banco_id) {
-          contaParaInserir.banco_id = formData.banco_id;
         }
         if (formData.data_pagamento) {
           contaParaInserir.data_pagamento = formData.data_pagamento;
