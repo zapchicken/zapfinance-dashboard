@@ -227,9 +227,11 @@ export default function ContasPagar() {
         contasParaInserir.push(contaParaInserir);
       }
       // Inserir todas as parcelas
+      console.log('Dados para inserir:', JSON.stringify(contasParaInserir, null, 2));
       const { data, error } = await supabase.from('contas_pagar').insert(contasParaInserir).select();
       if (error) {
         console.error('Erro Supabase insert:', error);
+        console.error('Detalhes do erro:', JSON.stringify(error, null, 2));
         throw error;
       }
       // Removido campos de parcelamento que não existem na tabela
