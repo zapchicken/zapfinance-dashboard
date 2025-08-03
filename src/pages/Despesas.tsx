@@ -61,7 +61,8 @@ export default function Despesas() {
       const { error } = await supabase.from('categorias').update({
         user_id: user.id,
         nome: formData.nome,
-        tipo: 'despesa'
+        tipo: 'despesa',
+        categoria: formData.categoria
       }).eq('id', editId);
       if (!error) {
         setIsDialogOpen(false);
@@ -76,7 +77,8 @@ export default function Despesas() {
       const { error } = await supabase.from('categorias').insert({
         user_id: user.id,
         nome: formData.nome,
-        tipo: 'despesa'
+        tipo: 'despesa',
+        categoria: formData.categoria
       });
       if (!error) {
         setFormData({ nome: '', categoria: CATEGORIAS[0] });
