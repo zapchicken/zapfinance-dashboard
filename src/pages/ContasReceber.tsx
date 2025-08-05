@@ -429,15 +429,18 @@ export default function ContasReceber() {
   const totalLiquido = contasFiltradas.reduce((sum, c) => sum + (c.valor_liquido || 0), 0);
 
   // Totais do formulário de Nova Receita por Modalidade
-  const totalValorModalidades = modalidadesValores.reduce((sum, m) => sum + (parseFloat(m.valor) || 0), 0);
+  const totalValorModalidades = modalidadesValores.reduce((sum, m) => {
+    const valor = parseFloat(m.valor.replace(/,/g, '.')) || 0;
+    return sum + valor;
+  }, 0);
   const totalTaxaModalidades = modalidadesValores.reduce((sum, m) => {
-    const valor = parseFloat(m.valor) || 0;
-    const taxa = parseFloat(m.taxa) || 0;
+    const valor = parseFloat(m.valor.replace(/,/g, '.')) || 0;
+    const taxa = parseFloat(m.taxa.replace(/,/g, '.')) || 0;
     return sum + (valor * (taxa / 100));
   }, 0);
   const totalLiquidoModalidades = modalidadesValores.reduce((sum, m) => {
-    const valor = parseFloat(m.valor) || 0;
-    const taxa = parseFloat(m.taxa) || 0;
+    const valor = parseFloat(m.valor.replace(/,/g, '.')) || 0;
+    const taxa = parseFloat(m.taxa.replace(/,/g, '.')) || 0;
     return sum + (valor - (valor * (taxa / 100)));
   }, 0);
 
