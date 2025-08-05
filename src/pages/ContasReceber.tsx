@@ -162,7 +162,17 @@ export default function ContasReceber() {
 
   // Atualizar handleModalidadeChange para aceitar banco_id
   const handleModalidadeChange = (idx: number, field: string, value: string) => {
-    setModalidadesValores(prev => prev.map((m, i) => i === idx ? { ...m, [field]: value } : m));
+    setModalidadesValores(prev => prev.map((m, i) => {
+      if (i === idx) {
+        if (field === 'valor') {
+          // Para o campo valor, permitir operações matemáticas
+          return { ...m, [field]: value };
+        } else {
+          return { ...m, [field]: value };
+        }
+      }
+      return m;
+    }));
   };
 
   function calcularDataVencimento(dataBase: string, regra: string) {
@@ -217,12 +227,21 @@ export default function ContasReceber() {
       const cleanExpr = expr.replace(/\s/g, '');
       if (/^[0-9+\-*/.()]+$/.test(cleanExpr)) {
         // Usar Function constructor em vez de eval para maior segurança
-        return Function('"use strict"; return (' + cleanExpr + ')')();
+        const result = Function('"use strict"; return (' + cleanExpr + ')')();
+        // Formatar com 2 casas decimais
+        return Math.round(result * 100) / 100;
       }
       return parseFloat(expr) || 0;
     } catch {
       return parseFloat(expr) || 0;
     }
+  }
+
+  function formatValueForDisplay(value: number) {
+    return new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value);
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -495,8 +514,12 @@ export default function ContasReceber() {
                                 type="text"
                                 value={m.valor}
                                 onChange={e => handleModalidadeChange(idx, 'valor', e.target.value)}
-                                onBlur={e => handleModalidadeChange(idx, 'valor', String(safeEval(e.target.value)))}
+                                onBlur={e => {
+                                  const calculatedValue = safeEval(e.target.value);
+                                  handleModalidadeChange(idx, 'valor', formatValueForDisplay(calculatedValue));
+                                }}
                                 placeholder="0,00"
+                                title="Digite valores ou operações matemáticas (ex: 100+50-25, 100*1.1, 200/2)"
                                 className="w-20 text-right h-8 px-2 py-1"
                                 disabled={viewId !== null}
                               />
