@@ -223,17 +223,21 @@ export default function ContasReceber() {
   // Função para avaliar expressões simples no campo Valor
   function safeEval(expr: string) {
     try {
+      // Converter vírgula para ponto para cálculos matemáticos
+      const exprWithDot = expr.replace(/,/g, '.');
       // Remover espaços e validar se contém apenas números e operadores seguros
-      const cleanExpr = expr.replace(/\s/g, '');
+      const cleanExpr = exprWithDot.replace(/\s/g, '');
       if (/^[0-9+\-*/.()]+$/.test(cleanExpr)) {
         // Usar Function constructor em vez de eval para maior segurança
         const result = Function('"use strict"; return (' + cleanExpr + ')')();
         // Formatar com 2 casas decimais
         return Math.round(result * 100) / 100;
       }
-      return parseFloat(expr) || 0;
+      // Se não for uma operação, converter vírgula para ponto e fazer parseFloat
+      return parseFloat(exprWithDot) || 0;
     } catch {
-      return parseFloat(expr) || 0;
+      // Em caso de erro, tentar converter vírgula para ponto
+      return parseFloat(expr.replace(/,/g, '.')) || 0;
     }
   }
 
@@ -519,7 +523,7 @@ export default function ContasReceber() {
                                   handleModalidadeChange(idx, 'valor', formatValueForDisplay(calculatedValue));
                                 }}
                                 placeholder="0,00"
-                                title="Digite valores ou operações matemáticas (ex: 100+50-25, 100*1.1, 200/2)"
+                                title="Digite valores ou operações matemáticas (ex: 100,50+50,25-25, 100*1,1, 200/2)"
                                 className="w-20 text-right h-8 px-2 py-1"
                                 disabled={viewId !== null}
                               />
