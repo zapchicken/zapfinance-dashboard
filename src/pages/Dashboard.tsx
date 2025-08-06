@@ -156,6 +156,18 @@ export default function Dashboard() {
 
     console.log('🔍 SIMPLES - Contas a pagar:', contasPagar?.length || 0);
     console.log('🔍 SIMPLES - Despesas do mês:', despesasMesAtual.length);
+    
+    // Debug detalhado da conta a pagar
+    if (contasPagar && contasPagar.length > 0) {
+      console.log('📋 Detalhes da conta a pagar:', contasPagar.map(cp => ({
+        descricao: cp.descricao,
+        valor: cp.valor,
+        data_vencimento: cp.data_vencimento,
+        categoria_id: cp.categoria_id,
+        dataFormatada: new Date(cp.data_vencimento).toLocaleDateString('pt-BR'),
+        dentroDoPeriodo: new Date(cp.data_vencimento) >= primeiroDia && new Date(cp.data_vencimento) <= ultimoDia
+      })));
+    }
 
     const totalReceitas = (receitasMesAtual || []).reduce((sum, r) => sum + r.valor, 0);
 
