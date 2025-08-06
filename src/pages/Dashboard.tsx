@@ -126,11 +126,17 @@ export default function Dashboard() {
     console.log('Último dia do mês:', ultimoDia);
 
     const receitasMesAtual = (receitas || []).filter(r => {
-      const dataReceita = new Date(r.data_vencimento);
+      const dataReceita = new Date(r.data_recebimento || r.data_vencimento);
       return dataReceita >= primeiroDia && dataReceita <= ultimoDia;
     });
 
     console.log('Receitas filtradas para o mês atual (\'receitasMesAtual\'):', receitasMesAtual);
+    console.log('📅 Debug datas das receitas:', receitasMesAtual.map(r => ({
+      descricao: r.descricao,
+      data_vencimento: r.data_vencimento,
+      data_recebimento: r.data_recebimento,
+      data_usada: r.data_recebimento || r.data_vencimento
+    })));
 
     const despesasMesAtual = (contasPagar || []).filter(d => {
       const dataDespesa = new Date(d.data_vencimento);
