@@ -36,9 +36,15 @@ export default function ContasPagar() {
   const [editandoConta, setEditandoConta] = useState<any | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+  const [searchTerm, setSearchTerm] = useState("");
   const [filtroStatus, setFiltroStatus] = useState('');
   const [filtroVencimentoInicio, setFiltroVencimentoInicio] = useState('');
   const [filtroVencimentoFim, setFiltroVencimentoFim] = useState('');
+  const [filtroPagamentoInicio, setFiltroPagamentoInicio] = useState('');
+  const [filtroPagamentoFim, setFiltroPagamentoFim] = useState('');
+  const [filtroModalidade, setFiltroModalidade] = useState('');
+  const [filtroFornecedor, setFiltroFornecedor] = useState('');
+  const [filtroBanco, setFiltroBanco] = useState('');
   const [filtroHoje, setFiltroHoje] = useState(false);
   const [bancos, setBancos] = useState<any[]>([]);
   // Removido tipoDespesa pois não existe na tabela
@@ -407,28 +413,70 @@ export default function ContasPagar() {
   });
 
   const contasFiltradas = contasOrdenadas.filter(conta => {
-    let ok = true;
+    // Filtro de busca por texto
+    const searchLower = searchTerm.toLowerCase();
+    const matchesSearch = !searchTerm || 
+        String(conta.descricao || "").toLowerCase().includes(searchLower) ||
+        despesas.find(cat => cat.id === conta.categoria_id)?.nome?.toLowerCase().includes(searchLower) ||
+        fornecedores.find(f => f.id === conta.fornecedor_id)?.nome?.toLowerCase().includes(searchLower);
+
+    // Filtro por modalidade (categoria de despesa)
+    const categoriaDespesa = despesas.find(cat => cat.id === conta.categoria_id);
+    const matchesModalidade = !filtroModalidade || 
+        categoriaDespesa?.nome?.toLowerCase().includes(filtroModalidade.toLowerCase());
+
+    // Filtro por fornecedor
+    const matchesFornecedor = !filtroFornecedor || 
+        conta.fornecedor_id === filtroFornecedor;
+
+    // Filtro por banco
+    const matchesBanco = !filtroBanco || 
+        conta.banco_id === filtroBanco;
+
+    // Filtro por status
+    let matchesStatus = true;
     if (filtroStatus) {
       if (filtroStatus === 'vence_hoje') {
         const hoje = new Date();
         const dataHoje = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
-        ok = ok && conta.data_vencimento === dataHoje;
+        matchesStatus = conta.data_vencimento === dataHoje;
       } else if (filtroStatus === 'vencido' || filtroStatus === 'a_vencer') {
         const hoje = new Date();
         const dataHoje = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
-        if (filtroStatus === 'vencido') ok = ok && conta.data_vencimento < dataHoje && conta.status !== 'pago';
-        if (filtroStatus === 'a_vencer') ok = ok && conta.data_vencimento > dataHoje && conta.status !== 'pago';
+        if (filtroStatus === 'vencido') matchesStatus = conta.data_vencimento < dataHoje && conta.status !== 'pago';
+        if (filtroStatus === 'a_vencer') matchesStatus = conta.data_vencimento > dataHoje && conta.status !== 'pago';
       } else {
-        ok = ok && conta.status === filtroStatus;
+        matchesStatus = conta.status === filtroStatus;
       }
     }
-    if (filtroVencimentoInicio) ok = ok && conta.data_vencimento >= filtroVencimentoInicio;
-    if (filtroVencimentoFim) ok = ok && conta.data_vencimento <= filtroVencimentoFim;
-    return ok && (
-      String(conta.descricao || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-              despesas.find(cat => cat.id === conta.categoria_id)?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      fornecedores.find(f => f.id === conta.fornecedor_id)?.nome?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+
+    // Filtro por data de vencimento
+    let matchesVencimento = true;
+    if (filtroVencimentoInicio || filtroVencimentoFim) {
+      if (filtroVencimentoInicio) {
+        matchesVencimento = matchesVencimento && conta.data_vencimento >= filtroVencimentoInicio;
+      }
+      if (filtroVencimentoFim) {
+        matchesVencimento = matchesVencimento && conta.data_vencimento <= filtroVencimentoFim;
+      }
+    }
+
+    // Filtro por data de pagamento
+    let matchesPagamento = true;
+    if (filtroPagamentoInicio || filtroPagamentoFim) {
+      if (!conta.data_pagamento) {
+        matchesPagamento = false;
+      } else {
+        if (filtroPagamentoInicio) {
+          matchesPagamento = matchesPagamento && conta.data_pagamento >= filtroPagamentoInicio;
+        }
+        if (filtroPagamentoFim) {
+          matchesPagamento = matchesPagamento && conta.data_pagamento <= filtroPagamentoFim;
+        }
+      }
+    }
+
+    return matchesSearch && matchesModalidade && matchesFornecedor && matchesBanco && matchesStatus && matchesVencimento && matchesPagamento;
   });
 
   return (
@@ -700,8 +748,9 @@ export default function ContasPagar() {
           <CardTitle>Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 items-end">
-            <div className="relative flex-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-8 gap-4 items-end">
+            {/* Busca por texto */}
+            <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por descrição, fornecedor ou categoria..."
@@ -710,14 +759,71 @@ export default function ContasPagar() {
                 className="pl-8"
               />
             </div>
-            <div className="flex flex-col">
-              <Label className="mb-1">Status</Label>
+
+            {/* Filtro por Modalidade (Categoria de Despesa) */}
+            <div>
+              <Label htmlFor="filtro-modalidade" className="text-sm text-muted-foreground">Modalidade</Label>
               <select
-                className="border rounded px-2 py-1"
+                id="filtro-modalidade"
+                value={filtroModalidade}
+                onChange={(e) => setFiltroModalidade(e.target.value)}
+                className="w-full text-sm border rounded px-3 py-2 bg-background"
+              >
+                <option value="">Todas as modalidades</option>
+                {despesas
+                  .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+                  .map(categoria => (
+                    <option key={categoria.id} value={categoria.nome}>{categoria.nome}</option>
+                  ))}
+              </select>
+            </div>
+
+            {/* Filtro por Fornecedor */}
+            <div>
+              <Label htmlFor="filtro-fornecedor" className="text-sm text-muted-foreground">Fornecedor</Label>
+              <select
+                id="filtro-fornecedor"
+                value={filtroFornecedor}
+                onChange={(e) => setFiltroFornecedor(e.target.value)}
+                className="w-full text-sm border rounded px-3 py-2 bg-background"
+              >
+                <option value="">Todos os fornecedores</option>
+                {fornecedores
+                  .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+                  .map(fornecedor => (
+                    <option key={fornecedor.id} value={fornecedor.id}>{fornecedor.nome}</option>
+                  ))}
+              </select>
+            </div>
+
+            {/* Filtro por Banco */}
+            <div>
+              <Label htmlFor="filtro-banco" className="text-sm text-muted-foreground">Banco</Label>
+              <select
+                id="filtro-banco"
+                value={filtroBanco}
+                onChange={(e) => setFiltroBanco(e.target.value)}
+                className="w-full text-sm border rounded px-3 py-2 bg-background"
+              >
+                <option value="">Todos os bancos</option>
+                {bancos
+                  .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+                  .map(banco => (
+                    <option key={banco.id} value={banco.id}>{banco.nome}</option>
+                  ))}
+              </select>
+            </div>
+
+            {/* Filtro por Status */}
+            <div>
+              <Label htmlFor="filtro-status" className="text-sm text-muted-foreground">Status</Label>
+              <select
+                id="filtro-status"
+                className="w-full text-sm border rounded px-3 py-2 bg-background"
                 value={filtroStatus}
                 onChange={e => setFiltroStatus(e.target.value)}
               >
-                <option value="">Todos</option>
+                <option value="">Todos os status</option>
                 <option value="pendente">Pendente</option>
                 <option value="pago">Pago</option>
                 <option value="vencido">Vencido</option>
@@ -725,37 +831,76 @@ export default function ContasPagar() {
                 <option value="vence_hoje">Vence Hoje</option>
               </select>
             </div>
-            <div className="flex flex-col">
-              <Label className="mb-1">Vencimento</Label>
-              <div className="flex gap-2 items-center">
-                <Button type="button" variant={filtroHoje ? 'default' : 'outline'} size="sm" onClick={() => {
-                  if (!filtroHoje) {
-                    const hoje = new Date();
-                    const dataHoje = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
-                    setFiltroVencimentoInicio(dataHoje);
-                    setFiltroVencimentoFim(dataHoje);
-                  } else {
-                    setFiltroVencimentoInicio('');
-                    setFiltroVencimentoFim('');
-                  }
-                  setFiltroHoje(!filtroHoje);
-                }}>
-                  Hoje
-                </Button>
-                <Input
-                  type="date"
-                  value={filtroVencimentoInicio}
-                  onChange={e => { setFiltroVencimentoInicio(e.target.value); setFiltroHoje(false); }}
-                  placeholder="Início"
-                />
-                <span>-</span>
-                <Input
-                  type="date"
-                  value={filtroVencimentoFim}
-                  onChange={e => { setFiltroVencimentoFim(e.target.value); setFiltroHoje(false); }}
-                  placeholder="Fim"
-                />
-              </div>
+
+            {/* Filtro por Data de Vencimento - Início */}
+            <div>
+              <Label htmlFor="filtro-vencimento-inicio" className="text-sm text-muted-foreground">Vencimento (Início)</Label>
+              <Input
+                id="filtro-vencimento-inicio"
+                type="date"
+                value={filtroVencimentoInicio}
+                onChange={(e) => setFiltroVencimentoInicio(e.target.value)}
+                className="w-full text-sm"
+              />
+            </div>
+
+            {/* Filtro por Data de Vencimento - Fim */}
+            <div>
+              <Label htmlFor="filtro-vencimento-fim" className="text-sm text-muted-foreground">Vencimento (Fim)</Label>
+              <Input
+                id="filtro-vencimento-fim"
+                type="date"
+                value={filtroVencimentoFim}
+                onChange={(e) => setFiltroVencimentoFim(e.target.value)}
+                className="w-full text-sm"
+              />
+            </div>
+
+            {/* Filtro por Data de Pagamento - Início */}
+            <div>
+              <Label htmlFor="filtro-pagamento-inicio" className="text-sm text-muted-foreground">Pagamento (Início)</Label>
+              <Input
+                id="filtro-pagamento-inicio"
+                type="date"
+                value={filtroPagamentoInicio}
+                onChange={(e) => setFiltroPagamentoInicio(e.target.value)}
+                className="w-full text-sm"
+              />
+            </div>
+
+            {/* Filtro por Data de Pagamento - Fim */}
+            <div>
+              <Label htmlFor="filtro-pagamento-fim" className="text-sm text-muted-foreground">Pagamento (Fim)</Label>
+              <Input
+                id="filtro-pagamento-fim"
+                type="date"
+                value={filtroPagamentoFim}
+                onChange={(e) => setFiltroPagamentoFim(e.target.value)}
+                className="w-full text-sm"
+              />
+            </div>
+
+            {/* Botão Limpar Filtros */}
+            <div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setSearchTerm("");
+                  setFiltroModalidade("");
+                  setFiltroFornecedor("");
+                  setFiltroBanco("");
+                  setFiltroStatus("");
+                  setFiltroVencimentoInicio("");
+                  setFiltroVencimentoFim("");
+                  setFiltroPagamentoInicio("");
+                  setFiltroPagamentoFim("");
+                  setFiltroHoje(false);
+                }}
+                className="w-full"
+              >
+                Limpar Filtros
+              </Button>
             </div>
           </div>
         </CardContent>
