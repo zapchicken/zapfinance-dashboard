@@ -154,6 +154,9 @@ export default function Dashboard() {
       }))
     });
 
+    console.log('🔍 SIMPLES - Contas a pagar:', contasPagar?.length || 0);
+    console.log('🔍 SIMPLES - Despesas do mês:', despesasMesAtual.length);
+
     const totalReceitas = (receitasMesAtual || []).reduce((sum, r) => sum + r.valor, 0);
 
     const totalTarifasModalidades = (receitasMesAtual || []).reduce((sum, r) => {
