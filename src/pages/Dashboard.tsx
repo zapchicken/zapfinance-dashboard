@@ -140,7 +140,18 @@ export default function Dashboard() {
 
     const despesasMesAtual = (contasPagar || []).filter(d => {
       const dataDespesa = new Date(d.data_vencimento);
-      return dataDespesa >= primeiroDia && dataDespesa <= ultimoDia;
+      const dentroDoPeriodo = dataDespesa >= primeiroDia && dataDespesa <= ultimoDia;
+      
+      console.log('🔍 Debug despesa:', {
+        descricao: d.descricao,
+        data_vencimento: d.data_vencimento,
+        dataDespesa: dataDespesa.toLocaleDateString('pt-BR'),
+        primeiroDia: primeiroDia.toLocaleDateString('pt-BR'),
+        ultimoDia: ultimoDia.toLocaleDateString('pt-BR'),
+        dentroDoPeriodo: dentroDoPeriodo
+      });
+      
+      return dentroDoPeriodo;
     });
 
     console.log('📋 Debug despesas:', {
