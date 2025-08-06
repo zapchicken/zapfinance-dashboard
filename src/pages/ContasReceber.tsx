@@ -207,14 +207,25 @@ export default function ContasReceber() {
   function safeEval(expr: string) {
     if (!expr) return 0;
     try {
-      // Normaliza o número: remove pontos de milhar e troca vírgula de decimal por ponto.
-      const normalizedExpr = expr.replace(/\./g, '').replace(/,/g, '.');
+      // Remove espaços em branco
+      let cleanExpr = expr.trim();
       
-      // Valida se a expressão contém apenas caracteres permitidos.
+      // Se não contém operadores matemáticos, trata como número simples
+      if (!/[\+\-\*\/]/.test(cleanExpr)) {
+        // Normaliza o número: remove pontos de milhar e troca vírgula de decimal por ponto
+        const normalizedExpr = cleanExpr.replace(/\./g, '').replace(/,/g, '.');
+        const result = parseFloat(normalizedExpr);
+        return isNaN(result) ? 0 : Math.round(result * 100) / 100;
+      }
+      
+      // Para expressões matemáticas, normaliza e avalia
+      const normalizedExpr = cleanExpr.replace(/\./g, '').replace(/,/g, '.');
+      
+      // Valida se a expressão contém apenas caracteres permitidos
       if (/^[0-9+\-*/.() ]+$/.test(normalizedExpr)) {
-        // Usa o construtor Function para avaliar a expressão de forma segura.
+        // Usa o construtor Function para avaliar a expressão de forma segura
         const result = Function('"use strict"; return (' + normalizedExpr + ')')();
-        // Arredonda para 2 casas decimais para evitar problemas de ponto flutuante.
+        // Arredonda para 2 casas decimais para evitar problemas de ponto flutuante
         return Math.round(result * 100) / 100;
       }
       return 0;
@@ -430,16 +441,16 @@ export default function ContasReceber() {
 
   // Totais do formulário de Nova Receita por Modalidade
   const totalValorModalidades = modalidadesValores.reduce((sum, m) => {
-    const valor = parseFloat(m.valor.replace(/,/g, '.')) || 0;
+    const valor = safeEval(m.valor);
     return sum + valor;
   }, 0);
   const totalTaxaModalidades = modalidadesValores.reduce((sum, m) => {
-    const valor = parseFloat(m.valor.replace(/,/g, '.')) || 0;
+    const valor = safeEval(m.valor);
     const taxa = parseFloat(m.taxa.replace(/,/g, '.')) || 0;
     return sum + (valor * (taxa / 100));
   }, 0);
   const totalLiquidoModalidades = modalidadesValores.reduce((sum, m) => {
-    const valor = parseFloat(m.valor.replace(/,/g, '.')) || 0;
+    const valor = safeEval(m.valor);
     const taxa = parseFloat(m.taxa.replace(/,/g, '.')) || 0;
     return sum + (valor - (valor * (taxa / 100)));
   }, 0);
@@ -526,7 +537,7 @@ export default function ContasReceber() {
                     </thead>
                     <tbody>
                       {modalidadesValores.map((m, idx) => {
-                        const valor = parseFloat(m.valor) || 0;
+                        const valor = safeEval(m.valor);
                         const taxa = parseFloat(m.taxa) || 0;
                         const valorTaxa = valor * (taxa / 100);
                         const valorLiquido = valor - valorTaxa;
