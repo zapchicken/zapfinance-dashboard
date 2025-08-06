@@ -400,6 +400,28 @@ export default function Dashboard() {
       totalContasPagar: contasPagar?.length || 0
     });
 
+    // Debug detalhado das receitas
+    if (receitas && receitas.length > 0) {
+      console.log('📋 Debug Receitas para próximos 7 dias:', receitas.map(r => ({
+        descricao: r.descricao,
+        valor: r.valor,
+        status: r.status,
+        data_vencimento: r.data_vencimento,
+        data_recebimento: r.data_recebimento,
+        data_usada: r.data_recebimento || r.data_vencimento
+      })));
+    }
+
+    // Debug detalhado das contas a pagar
+    if (contasPagar && contasPagar.length > 0) {
+      console.log('📋 Debug Contas a Pagar para próximos 7 dias:', contasPagar.map(c => ({
+        descricao: c.descricao,
+        valor: c.valor,
+        status: c.status,
+        data_vencimento: c.data_vencimento
+      })));
+    }
+
     return {
       totalReceitas,
       custosVariaveis,
