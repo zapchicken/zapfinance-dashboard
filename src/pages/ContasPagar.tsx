@@ -475,9 +475,11 @@ export default function ContasPagar() {
                     {despesas.length === 0 && (
                       <div className="p-2 text-muted-foreground">Nenhuma despesa encontrada</div>
                     )}
-                    {despesas.map(categoria => (
-                      <SelectItem key={categoria.id} value={categoria.id}>{categoria.nome}</SelectItem>
-                    ))}
+                    {despesas
+                      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+                      .map(categoria => (
+                        <SelectItem key={categoria.id} value={categoria.id}>{categoria.nome}</SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -488,9 +490,11 @@ export default function ContasPagar() {
                     <SelectValue placeholder="Selecione um fornecedor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {fornecedores.map(fornecedor => (
-                      <SelectItem key={fornecedor.id} value={fornecedor.id}>{fornecedor.nome}</SelectItem>
-                    ))}
+                    {fornecedores
+                      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+                      .map(fornecedor => (
+                        <SelectItem key={fornecedor.id} value={fornecedor.id}>{fornecedor.nome}</SelectItem>
+                      ))}
                   </SelectContent>
                                 </Select>
               </div>
@@ -501,9 +505,11 @@ export default function ContasPagar() {
                     <SelectValue placeholder="Selecione um banco" />
                   </SelectTrigger>
                   <SelectContent>
-                    {bancos.map(banco => (
-                      <SelectItem key={banco.id} value={banco.id}>{banco.nome}</SelectItem>
-                    ))}
+                    {bancos
+                      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+                      .map(banco => (
+                        <SelectItem key={banco.id} value={banco.id}>{banco.nome}</SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
