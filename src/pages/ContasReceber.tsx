@@ -407,7 +407,9 @@ export default function ContasReceber() {
       mesSelecionado,
       primeiroDia: primeiroDia.toISOString(),
       ultimoDia: ultimoDia.toISOString(),
-      searchTerm
+      searchTerm,
+      primeiroDiaFormatado: primeiroDia.toLocaleDateString('pt-BR'),
+      ultimoDiaFormatado: ultimoDia.toLocaleDateString('pt-BR')
     });
     
     // Debug: mostrar todas as contas carregadas
@@ -429,10 +431,24 @@ export default function ContasReceber() {
             String(conta.categorias?.nome || "").toLowerCase().includes(searchLower);
 
         const dataReferencia = conta.data_vencimento;
-        if (!dataReferencia) return false;
+        if (!dataReferencia) {
+          console.log('❌ Conta sem data_vencimento:', conta.descricao);
+          return false;
+        }
         
         const data = new Date(dataReferencia + 'T00:00:00');
         const matchesDate = data >= primeiroDia && data <= ultimoDia;
+        
+        if (!matchesDate) {
+          console.log('❌ Conta fora do período:', {
+            descricao: conta.descricao,
+            data_vencimento: conta.data_vencimento,
+            dataFormatada: data.toLocaleDateString('pt-BR'),
+            primeiroDia: primeiroDia.toLocaleDateString('pt-BR'),
+            ultimoDia: ultimoDia.toLocaleDateString('pt-BR'),
+            dentroDoPeriodo: matchesDate
+          });
+        }
 
         return matchesSearch && matchesDate;
       })
