@@ -357,23 +357,48 @@ export default function Dashboard() {
 
     // Contas vencendo hoje
     const hoje = new Date();
+    const hojeSemFuso = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    
     const contasVencendoHoje = (contasPagar || []).filter(c => {
-      const dataVencimento = new Date(c.data_vencimento);
-      return dataVencimento.toDateString() === hoje.toDateString() && c.status === 'Pendente';
+      // Criar data sem problemas de fuso horário
+      const [ano, mes, dia] = c.data_vencimento.split('-').map(Number);
+      const dataVencimento = new Date(ano, mes - 1, dia, 12, 0, 0);
+      const dataVencimentoSemFuso = new Date(dataVencimento.getFullYear(), dataVencimento.getMonth(), dataVencimento.getDate());
+      return dataVencimentoSemFuso.getTime() === hojeSemFuso.getTime() && c.status === 'Pendente';
     }).length;
 
     // Contas a receber próximos 7 dias
     const proximos7Dias = new Date(hoje.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const proximos7DiasSemFuso = new Date(proximos7Dias.getFullYear(), proximos7Dias.getMonth(), proximos7Dias.getDate());
+    
     const aReceberProximos7Dias = (receitas || []).filter(r => {
-      const dataVencimento = new Date(r.data_vencimento);
-      return dataVencimento >= hoje && dataVencimento <= proximos7Dias && r.status === 'Pendente';
+      // Usar data_recebimento com fallback para data_vencimento
+      const dataReferencia = r.data_recebimento || r.data_vencimento;
+      const [ano, mes, dia] = dataReferencia.split('-').map(Number);
+      const dataReceita = new Date(ano, mes - 1, dia, 12, 0, 0);
+      const dataReceitaSemFuso = new Date(dataReceita.getFullYear(), dataReceita.getMonth(), dataReceita.getDate());
+      return dataReceitaSemFuso >= hojeSemFuso && dataReceitaSemFuso <= proximos7DiasSemFuso && r.status === 'Pendente';
     }).reduce((sum, r) => sum + r.valor, 0);
 
     // Contas a pagar próximos 7 dias
     const aPagarProximos7Dias = (contasPagar || []).filter(c => {
-      const dataVencimento = new Date(c.data_vencimento);
-      return dataVencimento >= hoje && dataVencimento <= proximos7Dias && c.status === 'Pendente';
+      // Criar data sem problemas de fuso horário
+      const [ano, mes, dia] = c.data_vencimento.split('-').map(Number);
+      const dataVencimento = new Date(ano, mes - 1, dia, 12, 0, 0);
+      const dataVencimentoSemFuso = new Date(dataVencimento.getFullYear(), dataVencimento.getMonth(), dataVencimento.getDate());
+      return dataVencimentoSemFuso >= hojeSemFuso && dataVencimentoSemFuso <= proximos7DiasSemFuso && c.status === 'Pendente';
     }).reduce((sum, c) => sum + c.valor, 0);
+
+    // Debug para os cards
+    console.log('🔍 Debug Cards:', {
+      hoje: hojeSemFuso.toLocaleDateString('pt-BR'),
+      proximos7Dias: proximos7DiasSemFuso.toLocaleDateString('pt-BR'),
+      contasVencendoHoje,
+      aReceberProximos7Dias,
+      aPagarProximos7Dias,
+      totalReceitas: receitas?.length || 0,
+      totalContasPagar: contasPagar?.length || 0
+    });
 
     return {
       totalReceitas,
