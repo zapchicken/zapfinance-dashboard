@@ -111,7 +111,9 @@ export default function Dashboard() {
     custosOperacionais,
     outrosInvestimentos,
     investimentosIfood,
-    diferencaMeta,
+    percentualMargemContribuicao,
+    pontoEquilibrio,
+    diferencaEquilibrio,
     fatMinimoDiario,
     diasUteis,
     contasVencendoHoje,
@@ -347,10 +349,11 @@ export default function Dashboard() {
     const resultadoNaoOperacional = receitaNaoOperacional - despesaNaoOperacional;
 
     // Cálculos para ponto de equilíbrio
-    const metaMensal = 10000;
-    const diferencaMeta = totalReceitas - metaMensal;
+    const percentualMargemContribuicao = totalReceitas > 0 ? (margemContribuicao / totalReceitas) * 100 : 0;
+    const pontoEquilibrio = percentualMargemContribuicao > 0 ? despesasFixas / (percentualMargemContribuicao / 100) : 0;
+    const diferencaEquilibrio = totalReceitas - pontoEquilibrio;
     const diasUteis = 22;
-    const fatMinimoDiario = metaMensal / diasUteis;
+    const fatMinimoDiario = pontoEquilibrio > 0 ? pontoEquilibrio / diasUteis : 0;
 
     // Contas vencendo hoje
     const hoje = new Date();
@@ -387,7 +390,9 @@ export default function Dashboard() {
       custosOperacionais,
       outrosInvestimentos,
       investimentosIfood,
-      diferencaMeta,
+      percentualMargemContribuicao,
+      pontoEquilibrio,
+      diferencaEquilibrio,
       fatMinimoDiario,
       diasUteis,
       contasVencendoHoje,
@@ -599,19 +604,23 @@ export default function Dashboard() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="flex justify-between items-center">
-              <span className="text-sm">Meta Mensal</span>
-              <span className="font-semibold">{formatCurrency(10000)}</span>
+              <span className="text-sm">Ponto de Equilíbrio</span>
+              <span className="font-semibold">{formatCurrency(pontoEquilibrio)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm">Diferença para Meta</span>
+              <span className="text-sm">Diferença para Equilíbrio</span>
               <div className="text-right">
-                <span className="font-semibold text-green-600">{formatCurrency(diferencaMeta)}</span>
-                <Badge variant="secondary" className="ml-2">Acima da meta</Badge>
+                <span className={`font-semibold ${diferencaEquilibrio >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(diferencaEquilibrio)}
+                </span>
+                <Badge variant={diferencaEquilibrio >= 0 ? "secondary" : "destructive"} className="ml-2">
+                  {diferencaEquilibrio >= 0 ? 'Acima do PE' : 'Abaixo do PE'}
+                </Badge>
               </div>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm">Dias Úteis Restantes</span>
-              <span className="font-semibold">{diasUteis} dias</span>
+              <span className="text-sm">Margem de Contribuição</span>
+              <span className="font-semibold">{percentualMargemContribuicao.toFixed(1)}%</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm">Faturamento Mínimo Diário</span>
