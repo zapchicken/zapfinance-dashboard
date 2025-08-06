@@ -28,7 +28,9 @@ export default function ContasReceber() {
   const [searchTerm, setSearchTerm] = useState("");
   const [mesSelecionado, setMesSelecionado] = useState(() => {
     const hoje = new Date();
-    return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+    // Se estamos em agosto mas as receitas são de julho, vamos mostrar julho por padrão
+    // ou usar "todos" para mostrar todas as receitas
+    return "todos";
   });
   const [filtroDataReceita, setFiltroDataReceita] = useState("");
   const [filtroDataRecebimento, setFiltroDataRecebimento] = useState("");
