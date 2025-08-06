@@ -370,7 +370,7 @@ export default function Dashboard() {
       const dataVencimento = new Date(ano, mes - 1, dia, 12, 0, 0);
       const dataVencimentoSemFuso = new Date(dataVencimento.getFullYear(), dataVencimento.getMonth(), dataVencimento.getDate());
       const isVencendoHoje = dataVencimentoSemFuso.getTime() === hojeSemFuso.getTime();
-      const isPendente = c.status === 'Pendente';
+      const isPendente = c.status === 'Pendente' || c.status === 'pendente';
       
       if (isVencendoHoje) {
         console.log('📅 Conta vencendo hoje encontrada:', {
@@ -403,7 +403,7 @@ export default function Dashboard() {
       const dataReceita = new Date(ano, mes - 1, dia, 12, 0, 0);
       const dataReceitaSemFuso = new Date(dataReceita.getFullYear(), dataReceita.getMonth(), dataReceita.getDate());
       const dentroDoPeriodo = dataReceitaSemFuso >= hojeSemFuso && dataReceitaSemFuso <= proximos7DiasSemFuso;
-      const isPendente = r.status === 'Pendente';
+      const isPendente = r.status === 'Pendente' || r.status === 'pendente';
       
       if (dentroDoPeriodo) {
         console.log('📅 Receita nos próximos 7 dias encontrada:', {
@@ -434,7 +434,7 @@ export default function Dashboard() {
       const dataVencimento = new Date(ano, mes - 1, dia, 12, 0, 0);
       const dataVencimentoSemFuso = new Date(dataVencimento.getFullYear(), dataVencimento.getMonth(), dataVencimento.getDate());
       const dentroDoPeriodo = dataVencimentoSemFuso >= hojeSemFuso && dataVencimentoSemFuso <= proximos7DiasSemFuso;
-      const isPendente = c.status === 'Pendente';
+      const isPendente = c.status === 'Pendente' || c.status === 'pendente';
       
       if (dentroDoPeriodo) {
         console.log('📅 Conta a pagar nos próximos 7 dias encontrada:', {
