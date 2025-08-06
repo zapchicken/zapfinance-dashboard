@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Edit, Trash2, Eye } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Eye, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Select as ShadSelect, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -562,6 +562,75 @@ export default function ContasReceber() {
     }).format(value);
   };
 
+  // Função para calcular o total dos valores filtrados
+  const calcularTotalFiltrado = () => {
+    return contasFiltradas.reduce((total, conta) => total + (conta.valor || 0), 0);
+  };
+
+  // Função para exportar dados filtrados para CSV
+  const exportarParaCSV = () => {
+    if (contasFiltradas.length === 0) {
+      // Usar toast se disponível, senão usar alert
+      if (typeof window !== 'undefined') {
+        alert("Não há dados para exportar");
+      }
+      return;
+    }
+
+    // Cabeçalho do CSV
+    const headers = [
+      'Descrição',
+      'Modalidade',
+      'Cliente',
+      'Banco',
+      'Valor',
+      'Taxa (%)',
+      'Valor da Taxa',
+      'Valor Líquido',
+      'Data da Receita',
+      'Data de Recebimento',
+      'Status',
+      'Observações'
+    ];
+
+    // Dados das contas filtradas
+    const csvData = contasFiltradas.map(conta => [
+      conta.descricao || '',
+      conta.descricao || '', // Modalidade é a mesma que descrição
+      conta.cliente_nome || '',
+      bancos.find(b => b.id === conta.banco_id)?.nome || 'Sem banco',
+      formatCurrency(conta.valor || 0),
+      (conta.taxa_percentual || 0).toFixed(2),
+      formatCurrency(conta.valor_taxa || 0),
+      formatCurrency(conta.valor_liquido || 0),
+      conta.data_vencimento ? new Date(conta.data_vencimento).toLocaleDateString('pt-BR') : '',
+      conta.data_recebimento ? new Date(conta.data_recebimento).toLocaleDateString('pt-BR') : '',
+      conta.status || '',
+      conta.observacoes || ''
+    ]);
+
+    // Combinar cabeçalho e dados
+    const csvContent = [headers, ...csvData]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+
+    // Criar e baixar o arquivo
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `contas_a_receber_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Usar toast se disponível, senão usar alert
+    if (typeof window !== 'undefined') {
+      alert(`CSV exportado com ${contasFiltradas.length} registros`);
+    }
+  };
+
   if (loading || !user) {
     return <div className="flex justify-center items-center h-64">Carregando usuário...</div>;
   }
@@ -1031,7 +1100,22 @@ export default function ContasReceber() {
       {/* Tabela de contas */}
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Contas a Receber</CardTitle>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Lista de Contas a Receber</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                {contasFiltradas.length} contas encontradas • Total: {formatCurrency(calcularTotalFiltrado())}
+              </p>
+            </div>
+            <Button
+              onClick={exportarParaCSV}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Exportar CSV
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">

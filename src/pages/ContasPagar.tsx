@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Filter, Eye, Edit, Trash2, AlertTriangle, Clock, CheckCircle, Check } from "lucide-react";
+import { Plus, Search, Filter, Eye, Edit, Trash2, AlertTriangle, Clock, CheckCircle, Check, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -101,6 +101,74 @@ export default function ContasPagar() {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
+  };
+
+  // Função para calcular o total dos valores filtrados
+  const calcularTotalFiltrado = () => {
+    return contasFiltradas.reduce((total, conta) => total + (conta.valor || 0), 0);
+  };
+
+  // Função para exportar dados filtrados para CSV
+  const exportarParaCSV = () => {
+    if (contasFiltradas.length === 0) {
+      toast({
+        title: "Aviso",
+        description: "Não há dados para exportar",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Cabeçalho do CSV
+    const headers = [
+      'Descrição',
+      'Categoria',
+      'Fornecedor',
+      'Banco',
+      'Valor',
+      'Data de Vencimento',
+      'Data de Pagamento',
+      'Status',
+      'Observações',
+      'Data Nota Fiscal',
+      'Referência Nota Fiscal'
+    ];
+
+    // Dados das contas filtradas
+    const csvData = contasFiltradas.map(conta => [
+      conta.descricao || '',
+      despesas.find(cat => cat.id === conta.categoria_id)?.nome || 'Sem categoria',
+      fornecedores.find(f => f.id === conta.fornecedor_id)?.nome || 'Sem fornecedor',
+      bancos.find(b => b.id === conta.banco_id)?.nome || 'Sem banco',
+      formatCurrency(conta.valor || 0),
+      conta.data_vencimento ? new Date(conta.data_vencimento).toLocaleDateString('pt-BR') : '',
+      conta.data_pagamento ? new Date(conta.data_pagamento).toLocaleDateString('pt-BR') : '',
+      conta.status || '',
+      conta.observacoes || '',
+      conta.data_nota_fiscal ? new Date(conta.data_nota_fiscal).toLocaleDateString('pt-BR') : '',
+      conta.referencia_nota_fiscal || ''
+    ]);
+
+    // Combinar cabeçalho e dados
+    const csvContent = [headers, ...csvData]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+
+    // Criar e baixar o arquivo
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `contas_a_pagar_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Sucesso",
+      description: `CSV exportado com ${contasFiltradas.length} registros`,
+    });
   };
 
   // Função de auto-seleção removida - agora usa as categorias cadastradas
@@ -909,7 +977,22 @@ export default function ContasPagar() {
       {/* Tabela de contas */}
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Contas a Pagar</CardTitle>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Lista de Contas a Pagar</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                {contasFiltradas.length} contas encontradas • Total: {formatCurrency(calcularTotalFiltrado())}
+              </p>
+            </div>
+            <Button
+              onClick={exportarParaCSV}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Exportar CSV
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
