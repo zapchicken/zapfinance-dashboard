@@ -158,6 +158,9 @@ export default function Dashboard() {
     console.log('🔍 SIMPLES - Despesas do mês:', despesasMesAtual.length);
     
     // Debug detalhado da conta a pagar
+    console.log('🔍 DEBUG - ContasPagar existe?', !!contasPagar);
+    console.log('🔍 DEBUG - ContasPagar length:', contasPagar?.length);
+    
     if (contasPagar && contasPagar.length > 0) {
       console.log('📋 Detalhes da conta a pagar:', contasPagar.map(cp => ({
         descricao: cp.descricao,
