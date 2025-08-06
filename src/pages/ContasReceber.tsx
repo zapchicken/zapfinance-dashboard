@@ -16,6 +16,15 @@ export default function ContasReceber() {
   const { user } = useAuth();
   const { data: contasData, isLoading: loading, refetch: fetchContas } = useReceitas();
   const contas = useMemo(() => contasData || [], [contasData]);
+  
+  // Debug para verificar dados do hook
+  console.log('🔍 Debug hook useReceitas:', {
+    contasData: contasData?.length || 0,
+    contas: contas.length,
+    loading,
+    contasDataIsArray: Array.isArray(contasData),
+    contasIsArray: Array.isArray(contas)
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [mesSelecionado, setMesSelecionado] = useState(() => {
     const hoje = new Date();
@@ -400,7 +409,10 @@ export default function ContasReceber() {
   }, [mesSelecionado]);
 
   const contasFiltradas = useMemo(() => {
-    if (!contas) return [];
+    if (!contas) {
+      console.log('❌ Contas é null/undefined');
+      return [];
+    }
     
     console.log('🔍 Debug filtro:', {
       totalContas: contas.length,
@@ -409,7 +421,9 @@ export default function ContasReceber() {
       ultimoDia: ultimoDia.toISOString(),
       searchTerm,
       primeiroDiaFormatado: primeiroDia.toLocaleDateString('pt-BR'),
-      ultimoDiaFormatado: ultimoDia.toLocaleDateString('pt-BR')
+      ultimoDiaFormatado: ultimoDia.toLocaleDateString('pt-BR'),
+      contasIsArray: Array.isArray(contas),
+      contasType: typeof contas
     });
     
     // Debug: mostrar todas as contas carregadas
