@@ -28,9 +28,7 @@ export default function ContasReceber() {
   const [searchTerm, setSearchTerm] = useState("");
   const [mesSelecionado, setMesSelecionado] = useState(() => {
     const hoje = new Date();
-    // Se estamos em agosto mas as receitas são de julho, vamos mostrar julho por padrão
-    // ou usar "todos" para mostrar todas as receitas
-    return "todos";
+    return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
   });
   const [filtroDataReceita, setFiltroDataReceita] = useState("");
   const [filtroDataRecebimento, setFiltroDataRecebimento] = useState("");
@@ -446,9 +444,9 @@ export default function ContasReceber() {
             String(conta.cliente_nome || "").toLowerCase().includes(searchLower) ||
             String(conta.categorias?.nome || "").toLowerCase().includes(searchLower);
 
-        const dataReferencia = conta.data_vencimento;
+        const dataReferencia = conta.data_recebimento || conta.data_vencimento;
         if (!dataReferencia) {
-          console.log('❌ Conta sem data_vencimento:', conta.descricao);
+          console.log('❌ Conta sem data_recebimento nem data_vencimento:', conta.descricao);
           return false;
         }
         
@@ -459,6 +457,8 @@ export default function ContasReceber() {
           console.log('❌ Conta fora do período:', {
             descricao: conta.descricao,
             data_vencimento: conta.data_vencimento,
+            data_recebimento: conta.data_recebimento,
+            data_usada: dataReferencia,
             dataFormatada: data.toLocaleDateString('pt-BR'),
             primeiroDia: primeiroDia.toLocaleDateString('pt-BR'),
             ultimoDia: ultimoDia.toLocaleDateString('pt-BR'),
@@ -469,9 +469,11 @@ export default function ContasReceber() {
         return matchesSearch && matchesDate;
       })
       .sort((a, b) => {
-        if (!a.data_vencimento) return 1;
-        if (!b.data_vencimento) return -1;
-        return b.data_vencimento.localeCompare(a.data_vencimento);
+        const dataA = a.data_recebimento || a.data_vencimento;
+        const dataB = b.data_recebimento || b.data_vencimento;
+        if (!dataA) return 1;
+        if (!dataB) return -1;
+        return dataB.localeCompare(dataA);
       });
     
     console.log('✅ Contas filtradas:', filtradas.length);
