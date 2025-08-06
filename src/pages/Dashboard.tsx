@@ -143,6 +143,17 @@ export default function Dashboard() {
       return dataDespesa >= primeiroDia && dataDespesa <= ultimoDia;
     });
 
+    console.log('📋 Debug despesas:', {
+      totalContasPagar: contasPagar?.length || 0,
+      despesasMesAtual: despesasMesAtual.length,
+      despesas: despesasMesAtual.map(d => ({
+        descricao: d.descricao,
+        valor: d.valor,
+        data_vencimento: d.data_vencimento,
+        categoria_id: d.categoria_id
+      }))
+    });
+
     const totalReceitas = (receitasMesAtual || []).reduce((sum, r) => sum + r.valor, 0);
 
     const totalTarifasModalidades = (receitasMesAtual || []).reduce((sum, r) => {
@@ -173,8 +184,28 @@ export default function Dashboard() {
 
     const despesasFixas = (despesasMesAtual || []).filter(d => {
       const categoria = categoriasDespesas.find(cat => cat.id === d.categoria_id);
-      return categoria?.categoria === 'Despesa Fixa';
+      const isDespesaFixa = categoria?.categoria === 'Despesa Fixa';
+      
+      if (isDespesaFixa) {
+        console.log('💰 Despesa Fixa encontrada:', {
+          descricao: d.descricao,
+          valor: d.valor,
+          categoria: categoria?.categoria,
+          categoria_id: d.categoria_id
+        });
+      }
+      
+      return isDespesaFixa;
     }).reduce((sum, d) => sum + d.valor, 0);
+
+    console.log('📊 Debug categorias:', {
+      totalCategoriasDespesas: categoriasDespesas.length,
+      categorias: categoriasDespesas.map(cat => ({
+        id: cat.id,
+        nome: cat.nome,
+        categoria: cat.categoria
+      }))
+    });
 
     const custosOperacionais = (despesasMesAtual || []).filter(d => {
       const categoria = categoriasDespesas.find(cat => cat.id === d.categoria_id);
