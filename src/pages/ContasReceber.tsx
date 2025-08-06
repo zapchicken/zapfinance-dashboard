@@ -470,6 +470,18 @@ export default function ContasReceber() {
         const prevInput = document.getElementById(`valor-${prevIndex}`);
         prevInput?.focus();
       }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      // Navegar para o próximo campo ao pressionar Enter
+      const nextIndex = currentIndex + 1;
+      if (nextIndex < modalidadesValores.length) {
+        const nextInput = document.getElementById(`valor-${nextIndex}`);
+        nextInput?.focus();
+      } else {
+        // Se for o último campo, focar no botão Salvar
+        const saveButton = document.querySelector('button[type="submit"]') as HTMLButtonElement;
+        saveButton?.focus();
+      }
     }
   };
 
@@ -501,6 +513,12 @@ export default function ContasReceber() {
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+              {viewId === null && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
+                  💡 <strong>Dica:</strong> Use as setas ↑↓ para navegar entre os campos de valor. 
+                  O formulário só será salvo quando você clicar no botão "Salvar Receita".
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="data_receita">Data da Receita</Label>
                 <Input
@@ -553,9 +571,10 @@ export default function ContasReceber() {
                                 onChange={e => handleModalidadeChange(idx, 'valor', e.target.value)}
                                 onKeyDown={e => handleValorKeyDown(e, idx)}
                                 placeholder="0,00"
-                                title="Digite valores ou operações matemáticas (ex: 100,50+50,25-25, 100*1,1, 200/2)"
+                                title="Digite valores ou operações matemáticas (ex: 100,50+50,25-25, 100*1,1, 200/2). Use ↑↓ para navegar entre campos."
                                 className="w-20 text-right h-8 px-2 py-1"
                                 disabled={viewId !== null}
+                                autoComplete="off"
                               />
                             </td>
                             <td className="p-1 text-right min-w-[70px]">
@@ -595,9 +614,20 @@ export default function ContasReceber() {
                             </td>
                             <td className="p-1 text-center min-w-[100px]">
                               <select
+                                id={`banco-${idx}`}
                                 className="w-24 border rounded px-2 py-1 h-8"
                                 value={m.banco_id || ""}
                                 onChange={e => handleModalidadeChange(idx, 'banco_id', e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                                    e.preventDefault();
+                                    const nextIndex = idx + 1;
+                                    if (nextIndex < modalidadesValores.length) {
+                                      const nextInput = document.getElementById(`valor-${nextIndex}`);
+                                      nextInput?.focus();
+                                    }
+                                  }
+                                }}
                                 disabled={viewId !== null}
                               >
                                 <option value="">Banco</option>
@@ -635,8 +665,12 @@ export default function ContasReceber() {
               </div>
               <div className="flex gap-2 pt-4">
                 {viewId === null && (
-                  <Button type="submit" className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90">
-                    Salvar
+                  <Button 
+                    type="submit" 
+                    className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                    title="Clique aqui para salvar os dados (não salva automaticamente)"
+                  >
+                    💾 Salvar Receita
                   </Button>
                 )}
                 <Button type="button" variant="outline" className="flex-1" onClick={() => { 
