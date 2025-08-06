@@ -182,7 +182,10 @@ export default function ContasPagar() {
 
       console.log('Valores processados:', { valorTotal, valorParcela, parcelas });
 
-      const dataVencimento = new Date(formData.data_vencimento);
+      // Criar data sem problemas de fuso horário
+      const [ano, mes, dia] = formData.data_vencimento.split('-').map(Number);
+      const dataVencimento = new Date(ano, mes - 1, dia, 12, 0, 0); // Meio-dia para evitar fuso
+      
       const contasParaInserir = [];
       for (let i = 0; i < parcelas; i++) {
         const vencimento = new Date(dataVencimento);
@@ -343,7 +346,9 @@ export default function ContasPagar() {
     const hoje = new Date();
     const hojeSemFuso = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
     
-    const vencimento = new Date(conta.data_vencimento);
+    // Criar data de vencimento sem problemas de fuso horário
+    const [ano, mes, dia] = conta.data_vencimento.split('-').map(Number);
+    const vencimento = new Date(ano, mes - 1, dia, 12, 0, 0);
     const vencimentoSemFuso = new Date(vencimento.getFullYear(), vencimento.getMonth(), vencimento.getDate());
     
     if (vencimentoSemFuso < hojeSemFuso) return 'vencido';
@@ -393,8 +398,11 @@ export default function ContasPagar() {
       console.log('Categorias no render:', despesas);
   const contasOrdenadas = [...contasPagar].sort((a, b) => {
     // Ordenar por data de vencimento (mais antiga primeiro - ordem crescente)
-    const dateA = new Date(a.data_vencimento);
-    const dateB = new Date(b.data_vencimento);
+    // Criar datas sem problemas de fuso horário
+    const [anoA, mesA, diaA] = a.data_vencimento.split('-').map(Number);
+    const [anoB, mesB, diaB] = b.data_vencimento.split('-').map(Number);
+    const dateA = new Date(anoA, mesA - 1, diaA, 12, 0, 0);
+    const dateB = new Date(anoB, mesB - 1, diaB, 12, 0, 0);
     return dateA.getTime() - dateB.getTime();
   });
 
@@ -843,10 +851,18 @@ export default function ContasPagar() {
               <div><b>Categoria:</b> {despesas.find(cat => cat.id === visualizarConta.categoria_id)?.nome || 'Sem categoria'}</div>
               <div><b>Fornecedor:</b> {fornecedores.find(f => f.id === visualizarConta.fornecedor_id)?.nome || 'Sem fornecedor'}</div>
               <div><b>Valor:</b> R$ {Number(visualizarConta.valor).toFixed(2)}</div>
-              <div><b>Vencimento:</b> {new Date(visualizarConta.data_vencimento).toLocaleDateString('pt-BR')}</div>
+              <div><b>Vencimento:</b> {(() => {
+                const [ano, mes, dia] = visualizarConta.data_vencimento.split('-').map(Number);
+                const data = new Date(ano, mes - 1, dia, 12, 0, 0);
+                return data.toLocaleDateString('pt-BR');
+              })()}</div>
                               <div><b>Status:</b> {visualizarConta.status}</div>
                 <div><b>Observações:</b> {visualizarConta.observacoes}</div>
-                <div><b>Data Nota Fiscal:</b> {visualizarConta.data_nota_fiscal ? new Date(visualizarConta.data_nota_fiscal).toLocaleDateString('pt-BR') : '-'}</div>
+                <div><b>Data Nota Fiscal:</b> {visualizarConta.data_nota_fiscal ? (() => {
+                  const [ano, mes, dia] = visualizarConta.data_nota_fiscal.split('-').map(Number);
+                  const data = new Date(ano, mes - 1, dia, 12, 0, 0);
+                  return data.toLocaleDateString('pt-BR');
+                })() : '-'}</div>
                 <div><b>Referência Nota Fiscal:</b> {visualizarConta.referencia_nota_fiscal || '-'}</div>
               </div>
           )}
