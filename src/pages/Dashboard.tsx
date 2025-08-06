@@ -139,7 +139,9 @@ export default function Dashboard() {
     })));
 
     const despesasMesAtual = (contasPagar || []).filter(d => {
-      const dataDespesa = new Date(d.data_vencimento);
+      // Criar data no fuso horário local para evitar problemas de fuso
+      const [ano, mes, dia] = d.data_vencimento.split('-').map(Number);
+      const dataDespesa = new Date(ano, mes - 1, dia, 12, 0, 0); // Meio-dia para garantir
       const dentroDoPeriodo = dataDespesa >= primeiroDia && dataDespesa <= ultimoDia;
       
       console.log('🔍 Debug despesa:', {
