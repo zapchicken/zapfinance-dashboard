@@ -35,6 +35,10 @@ export default function ContasReceber() {
   const [filtroModalidade, setFiltroModalidade] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("");
   const [filtroBanco, setFiltroBanco] = useState("");
+  const [filtroDataReceitaInicio, setFiltroDataReceitaInicio] = useState("");
+  const [filtroDataReceitaFim, setFiltroDataReceitaFim] = useState("");
+  const [filtroDataRecebimentoInicio, setFiltroDataRecebimentoInicio] = useState("");
+  const [filtroDataRecebimentoFim, setFiltroDataRecebimentoFim] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     descricao: "",
@@ -464,6 +468,42 @@ export default function ContasReceber() {
         const matchesBanco = !filtroBanco || 
             conta.banco_id === filtroBanco;
 
+        // Filtro por data de receita
+        let matchesDataReceita = true;
+        if (filtroDataReceitaInicio || filtroDataReceitaFim) {
+          if (!conta.data_vencimento) {
+            matchesDataReceita = false;
+          } else {
+            const dataReceita = new Date(conta.data_vencimento + 'T00:00:00');
+            if (filtroDataReceitaInicio) {
+              const inicio = new Date(filtroDataReceitaInicio + 'T00:00:00');
+              matchesDataReceita = matchesDataReceita && dataReceita >= inicio;
+            }
+            if (filtroDataReceitaFim) {
+              const fim = new Date(filtroDataReceitaFim + 'T23:59:59');
+              matchesDataReceita = matchesDataReceita && dataReceita <= fim;
+            }
+          }
+        }
+
+        // Filtro por data de recebimento
+        let matchesDataRecebimento = true;
+        if (filtroDataRecebimentoInicio || filtroDataRecebimentoFim) {
+          if (!conta.data_recebimento) {
+            matchesDataRecebimento = false;
+          } else {
+            const dataRecebimento = new Date(conta.data_recebimento + 'T00:00:00');
+            if (filtroDataRecebimentoInicio) {
+              const inicio = new Date(filtroDataRecebimentoInicio + 'T00:00:00');
+              matchesDataRecebimento = matchesDataRecebimento && dataRecebimento >= inicio;
+            }
+            if (filtroDataRecebimentoFim) {
+              const fim = new Date(filtroDataRecebimentoFim + 'T23:59:59');
+              matchesDataRecebimento = matchesDataRecebimento && dataRecebimento <= fim;
+            }
+          }
+        }
+
         // Filtro por data (mês selecionado)
         const dataReferencia = conta.data_recebimento || conta.data_vencimento;
         if (!dataReferencia) {
@@ -487,7 +527,7 @@ export default function ContasReceber() {
           });
         }
 
-        return matchesSearch && matchesModalidade && matchesStatus && matchesBanco && matchesDate;
+        return matchesSearch && matchesModalidade && matchesStatus && matchesBanco && matchesDataReceita && matchesDataRecebimento && matchesDate;
       })
       .sort((a, b) => {
         const dataA = a.data_recebimento || a.data_vencimento;
@@ -508,7 +548,7 @@ export default function ContasReceber() {
       banco_id: c.banco_id
     })));
     return filtradas;
-  }, [contas, searchTerm, filtroModalidade, filtroStatus, filtroBanco, mesSelecionado, primeiroDia, ultimoDia]);
+  }, [contas, searchTerm, filtroModalidade, filtroStatus, filtroBanco, filtroDataReceitaInicio, filtroDataReceitaFim, filtroDataRecebimentoInicio, filtroDataRecebimentoFim, mesSelecionado, primeiroDia, ultimoDia]);
 
   // Cards de resumo
   const totalPendente = contasFiltradas.filter(c => c.status === 'pendente').reduce((sum, c) => sum + (c.valor || 0), 0);
@@ -827,7 +867,7 @@ export default function ContasReceber() {
           <CardTitle>Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-8 gap-4 items-end">
             {/* Busca por texto */}
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -913,6 +953,54 @@ export default function ContasReceber() {
               </select>
             </div>
 
+            {/* Filtro por Data de Receita - Início */}
+            <div>
+              <Label htmlFor="filtro-data-receita-inicio" className="text-sm text-muted-foreground">Data Receita (Início)</Label>
+              <Input
+                id="filtro-data-receita-inicio"
+                type="date"
+                value={filtroDataReceitaInicio}
+                onChange={(e) => setFiltroDataReceitaInicio(e.target.value)}
+                className="w-full text-sm"
+              />
+            </div>
+
+            {/* Filtro por Data de Receita - Fim */}
+            <div>
+              <Label htmlFor="filtro-data-receita-fim" className="text-sm text-muted-foreground">Data Receita (Fim)</Label>
+              <Input
+                id="filtro-data-receita-fim"
+                type="date"
+                value={filtroDataReceitaFim}
+                onChange={(e) => setFiltroDataReceitaFim(e.target.value)}
+                className="w-full text-sm"
+              />
+            </div>
+
+            {/* Filtro por Data de Recebimento - Início */}
+            <div>
+              <Label htmlFor="filtro-data-recebimento-inicio" className="text-sm text-muted-foreground">Data Recebimento (Início)</Label>
+              <Input
+                id="filtro-data-recebimento-inicio"
+                type="date"
+                value={filtroDataRecebimentoInicio}
+                onChange={(e) => setFiltroDataRecebimentoInicio(e.target.value)}
+                className="w-full text-sm"
+              />
+            </div>
+
+            {/* Filtro por Data de Recebimento - Fim */}
+            <div>
+              <Label htmlFor="filtro-data-recebimento-fim" className="text-sm text-muted-foreground">Data Recebimento (Fim)</Label>
+              <Input
+                id="filtro-data-recebimento-fim"
+                type="date"
+                value={filtroDataRecebimentoFim}
+                onChange={(e) => setFiltroDataRecebimentoFim(e.target.value)}
+                className="w-full text-sm"
+              />
+            </div>
+
             {/* Botão Limpar Filtros */}
             <div>
               <Button
@@ -923,6 +1011,10 @@ export default function ContasReceber() {
                   setFiltroModalidade("");
                   setFiltroStatus("");
                   setFiltroBanco("");
+                  setFiltroDataReceitaInicio("");
+                  setFiltroDataReceitaFim("");
+                  setFiltroDataRecebimentoInicio("");
+                  setFiltroDataRecebimentoFim("");
                   setMesSelecionado(() => {
                     const hoje = new Date();
                     return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
