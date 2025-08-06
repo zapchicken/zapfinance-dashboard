@@ -240,8 +240,31 @@ export default function Dashboard() {
 
     const custosOperacionais = (despesasMesAtual || []).filter(d => {
       const categoria = categoriasDespesas.find(cat => cat.id === d.categoria_id);
-      return categoria?.categoria === 'Custo Variável';
+      const isCustoOperacional = categoria?.categoria === 'Custo Variável';
+      
+      if (isCustoOperacional) {
+        console.log('💰 Custo Operacional encontrado:', {
+          descricao: d.descricao,
+          valor: d.valor,
+          categoria: categoria?.categoria,
+          categoria_id: d.categoria_id,
+          data_vencimento: d.data_vencimento
+        });
+      }
+      
+      return isCustoOperacional;
     }).reduce((sum, d) => sum + d.valor, 0);
+
+    console.log('📊 Debug Custos Operacionais:', {
+      totalDespesasMes: despesasMesAtual.length,
+      custosOperacionais: custosOperacionais,
+      despesasComCategoria: despesasMesAtual.map(d => ({
+        descricao: d.descricao,
+        valor: d.valor,
+        categoria_id: d.categoria_id,
+        categoria: categoriasDespesas.find(cat => cat.id === d.categoria_id)?.categoria
+      }))
+    });
 
     const custosVariaveis = custosOperacionais + totalTarifasModalidades;
     
