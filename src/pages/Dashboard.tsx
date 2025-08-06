@@ -359,17 +359,42 @@ export default function Dashboard() {
     const hoje = new Date();
     const hojeSemFuso = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
     
+    console.log('🔍 Debug Contas Vencendo Hoje:', {
+      hoje: hojeSemFuso.toLocaleDateString('pt-BR'),
+      totalContasPagar: contasPagar?.length || 0
+    });
+    
     const contasVencendoHoje = (contasPagar || []).filter(c => {
       // Criar data sem problemas de fuso horário
       const [ano, mes, dia] = c.data_vencimento.split('-').map(Number);
       const dataVencimento = new Date(ano, mes - 1, dia, 12, 0, 0);
       const dataVencimentoSemFuso = new Date(dataVencimento.getFullYear(), dataVencimento.getMonth(), dataVencimento.getDate());
-      return dataVencimentoSemFuso.getTime() === hojeSemFuso.getTime() && c.status === 'Pendente';
+      const isVencendoHoje = dataVencimentoSemFuso.getTime() === hojeSemFuso.getTime();
+      const isPendente = c.status === 'Pendente';
+      
+      if (isVencendoHoje) {
+        console.log('📅 Conta vencendo hoje encontrada:', {
+          descricao: c.descricao,
+          data_vencimento: c.data_vencimento,
+          dataVencimentoSemFuso: dataVencimentoSemFuso.toLocaleDateString('pt-BR'),
+          status: c.status,
+          isPendente: isPendente,
+          valor: c.valor
+        });
+      }
+      
+      return isVencendoHoje && isPendente;
     }).length;
 
     // Contas a receber próximos 7 dias
     const proximos7Dias = new Date(hoje.getTime() + 7 * 24 * 60 * 60 * 1000);
     const proximos7DiasSemFuso = new Date(proximos7Dias.getFullYear(), proximos7Dias.getMonth(), proximos7Dias.getDate());
+    
+    console.log('🔍 Debug A Receber Próximos 7 Dias:', {
+      hoje: hojeSemFuso.toLocaleDateString('pt-BR'),
+      proximos7Dias: proximos7DiasSemFuso.toLocaleDateString('pt-BR'),
+      totalReceitas: receitas?.length || 0
+    });
     
     const aReceberProximos7Dias = (receitas || []).filter(r => {
       // Usar data_recebimento com fallback para data_vencimento
@@ -377,16 +402,52 @@ export default function Dashboard() {
       const [ano, mes, dia] = dataReferencia.split('-').map(Number);
       const dataReceita = new Date(ano, mes - 1, dia, 12, 0, 0);
       const dataReceitaSemFuso = new Date(dataReceita.getFullYear(), dataReceita.getMonth(), dataReceita.getDate());
-      return dataReceitaSemFuso >= hojeSemFuso && dataReceitaSemFuso <= proximos7DiasSemFuso && r.status === 'Pendente';
+      const dentroDoPeriodo = dataReceitaSemFuso >= hojeSemFuso && dataReceitaSemFuso <= proximos7DiasSemFuso;
+      const isPendente = r.status === 'Pendente';
+      
+      if (dentroDoPeriodo) {
+        console.log('📅 Receita nos próximos 7 dias encontrada:', {
+          descricao: r.descricao,
+          data_recebimento: r.data_recebimento,
+          data_vencimento: r.data_vencimento,
+          data_usada: dataReferencia,
+          dataReceitaSemFuso: dataReceitaSemFuso.toLocaleDateString('pt-BR'),
+          status: r.status,
+          isPendente: isPendente,
+          valor: r.valor
+        });
+      }
+      
+      return dentroDoPeriodo && isPendente;
     }).reduce((sum, r) => sum + r.valor, 0);
 
     // Contas a pagar próximos 7 dias
+    console.log('🔍 Debug A Pagar Próximos 7 Dias:', {
+      hoje: hojeSemFuso.toLocaleDateString('pt-BR'),
+      proximos7Dias: proximos7DiasSemFuso.toLocaleDateString('pt-BR'),
+      totalContasPagar: contasPagar?.length || 0
+    });
+    
     const aPagarProximos7Dias = (contasPagar || []).filter(c => {
       // Criar data sem problemas de fuso horário
       const [ano, mes, dia] = c.data_vencimento.split('-').map(Number);
       const dataVencimento = new Date(ano, mes - 1, dia, 12, 0, 0);
       const dataVencimentoSemFuso = new Date(dataVencimento.getFullYear(), dataVencimento.getMonth(), dataVencimento.getDate());
-      return dataVencimentoSemFuso >= hojeSemFuso && dataVencimentoSemFuso <= proximos7DiasSemFuso && c.status === 'Pendente';
+      const dentroDoPeriodo = dataVencimentoSemFuso >= hojeSemFuso && dataVencimentoSemFuso <= proximos7DiasSemFuso;
+      const isPendente = c.status === 'Pendente';
+      
+      if (dentroDoPeriodo) {
+        console.log('📅 Conta a pagar nos próximos 7 dias encontrada:', {
+          descricao: c.descricao,
+          data_vencimento: c.data_vencimento,
+          dataVencimentoSemFuso: dataVencimentoSemFuso.toLocaleDateString('pt-BR'),
+          status: c.status,
+          isPendente: isPendente,
+          valor: c.valor
+        });
+      }
+      
+      return dentroDoPeriodo && isPendente;
     }).reduce((sum, c) => sum + c.valor, 0);
 
     // Debug para os cards
