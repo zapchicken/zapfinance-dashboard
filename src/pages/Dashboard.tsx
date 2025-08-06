@@ -416,10 +416,16 @@ export default function Dashboard() {
             <div className="col-span-3 text-right text-muted-foreground">100%</div>
           </div>
 
+          <div className="grid grid-cols-12 gap-4 border-b pb-2">
+            <div className="col-span-6 text-red-600 font-semibold">Custos Variáveis</div>
+            <div className="col-span-3 text-right font-bold text-red-600">{formatCurrency(custosVariaveis)}</div>
+            <div className="col-span-3 text-right text-red-600">{formatPercent(custosVariaveis, totalReceitas)}</div>
+          </div>
+
           <Accordion type="single" collapsible>
             <AccordionItem value="custos">
-              <AccordionTrigger className="text-red-600 font-semibold">
-                Custos Variáveis
+              <AccordionTrigger className="text-red-600 font-semibold text-sm">
+                Ver detalhamento dos custos variáveis
               </AccordionTrigger>
               <AccordionContent className="pl-4 space-y-1">
                 <div className="grid grid-cols-12 gap-4 text-muted-foreground">
@@ -454,10 +460,16 @@ export default function Dashboard() {
             <div className="col-span-3 text-right text-green-600">{formatPercent(lucroOperacional, totalReceitas)}</div>
           </div>
 
+          <div className="grid grid-cols-12 gap-4 border-b pb-2">
+            <div className="col-span-6 text-destructive font-semibold">Investimentos</div>
+            <div className="col-span-3 text-right font-bold text-destructive">{formatCurrency(investimentos)}</div>
+            <div className="col-span-3 text-right text-destructive">{formatPercent(investimentos, totalReceitas)}</div>
+          </div>
+
           <Accordion type="single" collapsible>
             <AccordionItem value="investimentos">
-              <AccordionTrigger className="text-destructive font-semibold">
-                Investimentos
+              <AccordionTrigger className="text-destructive font-semibold text-sm">
+                Ver detalhamento dos investimentos
               </AccordionTrigger>
               <AccordionContent className="pl-4 space-y-1">
                 <div className="grid grid-cols-12 gap-4 text-muted-foreground">
