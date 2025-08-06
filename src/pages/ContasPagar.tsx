@@ -36,7 +36,6 @@ export default function ContasPagar() {
   const [editandoConta, setEditandoConta] = useState<any | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
-  const [searchTerm, setSearchTerm] = useState("");
   const [filtroStatus, setFiltroStatus] = useState('');
   const [filtroVencimentoInicio, setFiltroVencimentoInicio] = useState('');
   const [filtroVencimentoFim, setFiltroVencimentoFim] = useState('');
@@ -110,6 +109,7 @@ export default function ContasPagar() {
 
   // Função para exportar dados filtrados para CSV
   const exportarParaCSV = () => {
+    console.log('Botão exportar clicado!');
     if (contasFiltradas.length === 0) {
       toast({
         title: "Aviso",
