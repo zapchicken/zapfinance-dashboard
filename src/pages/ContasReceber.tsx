@@ -32,6 +32,9 @@ export default function ContasReceber() {
   });
   const [filtroDataReceita, setFiltroDataReceita] = useState("");
   const [filtroDataRecebimento, setFiltroDataRecebimento] = useState("");
+  const [filtroModalidade, setFiltroModalidade] = useState("");
+  const [filtroStatus, setFiltroStatus] = useState("");
+  const [filtroBanco, setFiltroBanco] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     descricao: "",
@@ -420,6 +423,9 @@ export default function ContasReceber() {
       primeiroDia: primeiroDia.toISOString(),
       ultimoDia: ultimoDia.toISOString(),
       searchTerm,
+      filtroModalidade,
+      filtroStatus,
+      filtroBanco,
       primeiroDiaFormatado: primeiroDia.toLocaleDateString('pt-BR'),
       ultimoDiaFormatado: ultimoDia.toLocaleDateString('pt-BR'),
       contasIsArray: Array.isArray(contas),
@@ -433,17 +439,32 @@ export default function ContasReceber() {
       valor: c.valor,
       data_vencimento: c.data_vencimento,
       data_recebimento: c.data_recebimento,
-      status: c.status
+      status: c.status,
+      banco_id: c.banco_id
     })));
     
     const filtradas = contas
       .filter(conta => {
+        // Filtro de busca por texto
         const searchLower = searchTerm.toLowerCase();
         const matchesSearch = !searchTerm || 
             String(conta.descricao || "").toLowerCase().includes(searchLower) ||
             String(conta.cliente_nome || "").toLowerCase().includes(searchLower) ||
             String(conta.categorias?.nome || "").toLowerCase().includes(searchLower);
 
+        // Filtro por modalidade (descrição)
+        const matchesModalidade = !filtroModalidade || 
+            String(conta.descricao || "").toLowerCase().includes(filtroModalidade.toLowerCase());
+
+        // Filtro por status
+        const matchesStatus = !filtroStatus || 
+            String(conta.status || "").toLowerCase() === filtroStatus.toLowerCase();
+
+        // Filtro por banco
+        const matchesBanco = !filtroBanco || 
+            conta.banco_id === filtroBanco;
+
+        // Filtro por data (mês selecionado)
         const dataReferencia = conta.data_recebimento || conta.data_vencimento;
         if (!dataReferencia) {
           console.log('❌ Conta sem data_recebimento nem data_vencimento:', conta.descricao);
@@ -466,7 +487,7 @@ export default function ContasReceber() {
           });
         }
 
-        return matchesSearch && matchesDate;
+        return matchesSearch && matchesModalidade && matchesStatus && matchesBanco && matchesDate;
       })
       .sort((a, b) => {
         const dataA = a.data_recebimento || a.data_vencimento;
@@ -483,10 +504,11 @@ export default function ContasReceber() {
       valor: c.valor,
       data_vencimento: c.data_vencimento,
       data_recebimento: c.data_recebimento,
-      status: c.status
+      status: c.status,
+      banco_id: c.banco_id
     })));
     return filtradas;
-  }, [contas, searchTerm, mesSelecionado, primeiroDia, ultimoDia]);
+  }, [contas, searchTerm, filtroModalidade, filtroStatus, filtroBanco, mesSelecionado, primeiroDia, ultimoDia]);
 
   // Cards de resumo
   const totalPendente = contasFiltradas.filter(c => c.status === 'pendente').reduce((sum, c) => sum + (c.valor || 0), 0);
@@ -805,23 +827,78 @@ export default function ContasReceber() {
           <CardTitle>Filtros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 items-end">
-            <div className="relative flex-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-end">
+            {/* Busca por texto */}
+            <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="text"
                 placeholder="Buscar por descrição ou cliente"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="w-48"
+                className="pl-8"
               />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Mês:</span>
+
+            {/* Filtro por Modalidade */}
+            <div>
+              <Label htmlFor="filtro-modalidade" className="text-sm text-muted-foreground">Modalidade</Label>
               <select
+                id="filtro-modalidade"
+                value={filtroModalidade}
+                onChange={(e) => setFiltroModalidade(e.target.value)}
+                className="w-full text-sm border rounded px-3 py-2 bg-background"
+              >
+                <option value="">Todas as modalidades</option>
+                <option value="Crédito">Crédito</option>
+                <option value="Débito">Débito</option>
+                <option value="Dinheiro">Dinheiro</option>
+                <option value="Ifood">Ifood</option>
+                <option value="Ifood Voucher">Ifood Voucher</option>
+                <option value="Pix">Pix</option>
+                <option value="Cortesia">Cortesia</option>
+              </select>
+            </div>
+
+            {/* Filtro por Status */}
+            <div>
+              <Label htmlFor="filtro-status" className="text-sm text-muted-foreground">Status</Label>
+              <select
+                id="filtro-status"
+                value={filtroStatus}
+                onChange={(e) => setFiltroStatus(e.target.value)}
+                className="w-full text-sm border rounded px-3 py-2 bg-background"
+              >
+                <option value="">Todos os status</option>
+                <option value="pendente">Pendente</option>
+                <option value="recebido">Recebido</option>
+              </select>
+            </div>
+
+            {/* Filtro por Banco */}
+            <div>
+              <Label htmlFor="filtro-banco" className="text-sm text-muted-foreground">Banco</Label>
+              <select
+                id="filtro-banco"
+                value={filtroBanco}
+                onChange={(e) => setFiltroBanco(e.target.value)}
+                className="w-full text-sm border rounded px-3 py-2 bg-background"
+              >
+                <option value="">Todos os bancos</option>
+                {bancos.map(banco => (
+                  <option key={banco.id} value={banco.id}>{banco.nome}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filtro por Mês */}
+            <div>
+              <Label htmlFor="filtro-mes" className="text-sm text-muted-foreground">Mês</Label>
+              <select
+                id="filtro-mes"
                 value={mesSelecionado}
                 onChange={(e) => setMesSelecionado(e.target.value)}
-                className="text-sm text-muted-foreground bg-transparent border-none focus:outline-none"
+                className="w-full text-sm border rounded px-3 py-2 bg-background"
               >
                 <option value="todos">Todas as receitas</option>
                 {Array.from({ length: 12 }, (_, i) => {
@@ -834,6 +911,27 @@ export default function ContasReceber() {
                   );
                 })}
               </select>
+            </div>
+
+            {/* Botão Limpar Filtros */}
+            <div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setSearchTerm("");
+                  setFiltroModalidade("");
+                  setFiltroStatus("");
+                  setFiltroBanco("");
+                  setMesSelecionado(() => {
+                    const hoje = new Date();
+                    return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+                  });
+                }}
+                className="w-full"
+              >
+                Limpar Filtros
+              </Button>
             </div>
           </div>
         </CardContent>
