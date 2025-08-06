@@ -410,6 +410,16 @@ export default function ContasReceber() {
       searchTerm
     });
     
+    // Debug: mostrar todas as contas carregadas
+    console.log('📋 Todas as contas carregadas:', contas.map(c => ({
+      id: c.id,
+      descricao: c.descricao,
+      valor: c.valor,
+      data_vencimento: c.data_vencimento,
+      data_recebimento: c.data_recebimento,
+      status: c.status
+    })));
+    
     const filtradas = contas
       .filter(conta => {
         const searchLower = searchTerm.toLowerCase();
@@ -433,6 +443,14 @@ export default function ContasReceber() {
       });
     
     console.log('✅ Contas filtradas:', filtradas.length);
+    console.log('📋 Contas que passaram no filtro:', filtradas.map(c => ({
+      id: c.id,
+      descricao: c.descricao,
+      valor: c.valor,
+      data_vencimento: c.data_vencimento,
+      data_recebimento: c.data_recebimento,
+      status: c.status
+    })));
     return filtradas;
   }, [contas, searchTerm, mesSelecionado, primeiroDia, ultimoDia]);
 
@@ -847,6 +865,12 @@ export default function ContasReceber() {
             {contasFiltradas.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
                 Nenhuma conta cadastrada
+                <br />
+                <small className="text-xs">
+                  Total de contas carregadas: {contas?.length || 0} | 
+                  Mês selecionado: {mesSelecionado} | 
+                  Filtro de busca: "{searchTerm}"
+                </small>
               </div>
             )}
           </div>
