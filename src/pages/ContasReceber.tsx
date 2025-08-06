@@ -7,11 +7,22 @@ import { Plus, Search, Edit, Trash2, Eye } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Select as ShadSelect, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { useReceitas } from "@/hooks/useReceitas";
+import { useAuth } from "@/hooks/useAuth";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function ContasReceber() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { data: contasData, isLoading: loading, refetch: fetchContas } = useReceitas();
+  const contas = useMemo(() => contasData || [], [contasData]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [contas, setContas] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [mesSelecionado, setMesSelecionado] = useState(() => {
+    const hoje = new Date();
+    return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [filtroDataReceita, setFiltroDataReceita] = useState("");
+  const [filtroDataRecebimento, setFiltroDataRecebimento] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     descricao: "",
@@ -26,7 +37,6 @@ export default function ContasReceber() {
   });
   const [editId, setEditId] = useState<string | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
   const [categorias, setCategorias] = useState<any[]>([]);
   const [modalidadesReceita, setModalidadesReceita] = useState<any[]>([]);
   const [bancos, setBancos] = useState<any[]>([]);
@@ -65,14 +75,6 @@ export default function ContasReceber() {
     }))
   );
 
-  // Filtros por data
-  const [filtroDataReceita, setFiltroDataReceita] = useState("");
-  const [filtroDataRecebimento, setFiltroDataRecebimento] = useState("");
-
-  useEffect(() => {
-    getUser();
-  }, []);
-
   useEffect(() => {
     if (user) {
       fetchContas();
@@ -98,26 +100,7 @@ export default function ContasReceber() {
     }
   }, [isDialogOpen, bancos, editId, modalidadesReceita]);
 
-  const getUser = async () => {
-    const { data } = await supabase.auth.getUser();
-    setUser(data?.user || null);
-  };
-
-  const fetchContas = async () => {
-    if (!user) return;
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('contas_receber')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('data_vencimento', { ascending: true });
-    console.log('Contas retornadas do Supabase:', data);
-    if (!error) setContas(data || []);
-    // Para debug, pode manter:
-    const modalidades = contas.map(c => c.descricao);
-    console.log('Modalidades detalhadas:', modalidades, modalidades.map(mod => [mod, typeof mod, JSON.stringify(mod)]));
-    setLoading(false);
-  };
+  
 
   const fetchCategorias = async () => {
     if (!user) return;
@@ -222,22 +205,21 @@ export default function ContasReceber() {
 
   // Função para avaliar expressões simples no campo Valor
   function safeEval(expr: string) {
+    if (!expr) return 0;
     try {
-      // Converter vírgula para ponto para cálculos matemáticos
-      const exprWithDot = expr.replace(/,/g, '.');
-      // Remover espaços e validar se contém apenas números e operadores seguros
-      const cleanExpr = exprWithDot.replace(/\s/g, '');
-      if (/^[0-9+\-*/.()]+$/.test(cleanExpr)) {
-        // Usar Function constructor em vez de eval para maior segurança
-        const result = Function('"use strict"; return (' + cleanExpr + ')')();
-        // Formatar com 2 casas decimais
+      // Normaliza o número: remove pontos de milhar e troca vírgula de decimal por ponto.
+      const normalizedExpr = expr.replace(/\./g, '').replace(/,/g, '.');
+      
+      // Valida se a expressão contém apenas caracteres permitidos.
+      if (/^[0-9+\-*/.() ]+$/.test(normalizedExpr)) {
+        // Usa o construtor Function para avaliar a expressão de forma segura.
+        const result = Function('"use strict"; return (' + normalizedExpr + ')')();
+        // Arredonda para 2 casas decimais para evitar problemas de ponto flutuante.
         return Math.round(result * 100) / 100;
       }
-      // Se não for uma operação, converter vírgula para ponto e fazer parseFloat
-      return parseFloat(exprWithDot) || 0;
+      return 0;
     } catch {
-      // Em caso de erro, tentar converter vírgula para ponto
-      return parseFloat(expr.replace(/,/g, '.')) || 0;
+      return 0;
     }
   }
 
@@ -255,20 +237,23 @@ export default function ContasReceber() {
       return;
     }
 
+    // Validação e cálculo antes de salvar
+    const processedModalidades = modalidadesValores.map(m => ({
+      ...m,
+      valorCalculado: safeEval(m.valor)
+    }));
+
     // Validação: se valor > 0, banco deve ser selecionado
-    for (let i = 0; i < modalidadesValores.length; i++) {
-      const m = modalidadesValores[i];
-      if ((parseFloat(m.valor) || 0) > 0 && !m.banco_id) {
+    for (const m of processedModalidades) {
+      if (m.valorCalculado > 0 && !m.banco_id) {
         alert(`Selecione o banco para a modalidade "${m.nome}"`);
         return;
       }
     }
 
     if (editId) {
-      // Modo de edição - primeiro excluir registros antigos do mesmo grupo
       const contaSelecionada = contas.find(c => c.id === editId);
       if (contaSelecionada) {
-        // Excluir todas as contas do mesmo grupo (mesma data de vencimento e recebimento)
         const { error: deleteError } = await supabase
           .from('contas_receber')
           .delete()
@@ -283,9 +268,10 @@ export default function ContasReceber() {
     }
 
     // Inserir novos registros
-    for (const [idx, m] of modalidadesValores.entries()) {
-      if (!m.valor || Number(m.valor) <= 0) continue;
-      const valor = parseFloat(m.valor);
+    for (const [idx, m] of processedModalidades.entries()) {
+      if (m.valorCalculado <= 0) continue;
+
+      const valor = m.valorCalculado;
       const taxa = parseFloat(m.taxa) || 0;
       const valorTaxa = valor * (taxa / 100);
       const valorLiquido = valor - valorTaxa;
@@ -382,30 +368,44 @@ export default function ContasReceber() {
     if (!window.confirm('Tem certeza que deseja excluir esta conta?')) return;
     const { error } = await supabase.from('contas_receber').delete().eq('id', id);
     if (!error) {
-      fetchContas();
+      queryClient.invalidateQueries({ queryKey: ['receitas'] });
     } else {
       alert("Erro ao excluir conta: " + error.message);
     }
   };
 
-  const filteredContas = contas.filter(conta =>
-    String(conta.descricao || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    String(conta.cliente_nome || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    String(conta.categorias?.nome || "").toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const { primeiroDia, ultimoDia } = useMemo(() => {
+    const [ano, mes] = mesSelecionado.split('-').map(Number);
+    return { 
+        primeiroDia: new Date(ano, mes - 1, 1), 
+        ultimoDia: new Date(ano, mes, 0) 
+    };
+  }, [mesSelecionado]);
 
-  // 1. Ordenar contasFiltradas por data de recebimento (mais recente primeiro):
-  const contasFiltradas = contas.filter(conta => {
-    let ok = true;
-    if (searchTerm) ok = ok && (String(conta.descricao || "").toLowerCase() === searchTerm.toLowerCase());
-    if (filtroDataReceita) ok = ok && (conta.data_vencimento === filtroDataReceita);
-    if (filtroDataRecebimento) ok = ok && (conta.data_recebimento === filtroDataRecebimento);
-    return ok;
-  }).sort((a, b) => {
-    if (!a.data_recebimento) return 1;
-    if (!b.data_recebimento) return -1;
-    return b.data_recebimento.localeCompare(a.data_recebimento);
-  });
+  const contasFiltradas = useMemo(() => {
+    if (!contas) return [];
+    return contas
+      .filter(conta => {
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch = !searchTerm || 
+            String(conta.descricao || "").toLowerCase().includes(searchLower) ||
+            String(conta.cliente_nome || "").toLowerCase().includes(searchLower) ||
+            String(conta.categorias?.nome || "").toLowerCase().includes(searchLower);
+
+        const dataReferencia = conta.data_vencimento;
+        if (!dataReferencia) return false;
+        
+        const data = new Date(dataReferencia + 'T00:00:00');
+        const matchesDate = data >= primeiroDia && data <= ultimoDia;
+
+        return matchesSearch && matchesDate;
+      })
+      .sort((a, b) => {
+        if (!a.data_vencimento) return 1;
+        if (!b.data_vencimento) return -1;
+        return b.data_vencimento.localeCompare(a.data_vencimento);
+      });
+  }, [contas, searchTerm, mesSelecionado, primeiroDia, ultimoDia]);
 
   // Cards de resumo
   const totalPendente = contasFiltradas.filter(c => c.status === 'pendente').reduce((sum, c) => sum + (c.valor || 0), 0);
@@ -443,6 +443,24 @@ export default function ContasReceber() {
     const taxa = parseFloat(m.taxa.replace(/,/g, '.')) || 0;
     return sum + (valor - (valor * (taxa / 100)));
   }, 0);
+
+  const handleValorKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, currentIndex: number) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const nextIndex = currentIndex + 1;
+      if (nextIndex < modalidadesValores.length) {
+        const nextInput = document.getElementById(`valor-${nextIndex}`);
+        nextInput?.focus();
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prevIndex = currentIndex - 1;
+      if (prevIndex >= 0) {
+        const prevInput = document.getElementById(`valor-${prevIndex}`);
+        prevInput?.focus();
+      }
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -518,13 +536,11 @@ export default function ContasReceber() {
                             <td className="p-1 font-medium text-left">{m.nome}</td>
                             <td className="p-1 text-right min-w-[80px]">
                               <Input
+                                id={`valor-${idx}`}
                                 type="text"
                                 value={m.valor}
                                 onChange={e => handleModalidadeChange(idx, 'valor', e.target.value)}
-                                onBlur={e => {
-                                  const calculatedValue = safeEval(e.target.value);
-                                  handleModalidadeChange(idx, 'valor', formatValueForDisplay(calculatedValue));
-                                }}
+                                onKeyDown={e => handleValorKeyDown(e, idx)}
                                 placeholder="0,00"
                                 title="Digite valores ou operações matemáticas (ex: 100,50+50,25-25, 100*1,1, 200/2)"
                                 className="w-20 text-right h-8 px-2 py-1"
@@ -537,8 +553,9 @@ export default function ContasReceber() {
                                 step="0.01"
                                 value={m.taxa}
                                 onChange={e => handleModalidadeChange(idx, 'taxa', e.target.value)}
-                                className="w-14 text-right h-8 px-2 py-1"
+                                className="w-14 text-right h-8 px-2 py-1 bg-gray-100 cursor-not-allowed"
                                 disabled={viewId !== null}
+                                readOnly // Impede a edição do campo de taxa
                               />
                             </td>
                             <td className="p-1 text-right min-w-[90px]">
@@ -684,23 +701,22 @@ export default function ContasReceber() {
                 className="w-48"
               />
             </div>
-            <div className="flex flex-col">
-              <Label className="mb-1">Data da Receita</Label>
-              <Input
-                type="date"
-                value={filtroDataReceita}
-                onChange={e => setFiltroDataReceita(e.target.value)}
-                placeholder="Data da Receita"
-              />
-            </div>
-            <div className="flex flex-col">
-              <Label className="mb-1">Data de Recebimento</Label>
-              <Input
-                type="date"
-                value={filtroDataRecebimento}
-                onChange={e => setFiltroDataRecebimento(e.target.value)}
-                placeholder="Data de Recebimento"
-              />
+            <div className="flex items-center gap-2">
+              <select
+                value={mesSelecionado}
+                onChange={(e) => setMesSelecionado(e.target.value)}
+                className="text-sm text-muted-foreground bg-transparent border-none focus:outline-none"
+              >
+                {Array.from({ length: 12 }, (_, i) => {
+                  const data = new Date(new Date().getFullYear(), i, 1);
+                  const valor = `${new Date().getFullYear()}-${String(i + 1).padStart(2, '0')}`;
+                  return (
+                    <option key={valor} value={valor}>
+                      {data.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                    </option>
+                  );
+                })}
+              </select>
             </div>
           </div>
         </CardContent>

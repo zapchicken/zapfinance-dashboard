@@ -15,13 +15,13 @@ import { useAuth } from "@/hooks/useAuth";
 export default function ContasPagar() {
   const [searchTerm, setSearchTerm] = useState("");
   const [contasPagar, setContasPagar] = useState<any[]>([]);
-  const [categorias, setCategorias] = useState<any[]>([]);
+  const [despesas, setDespesas] = useState<any[]>([]);
   const [fornecedores, setFornecedores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     descricao: "",
-    categoria_id: "",
+    despesa_id: "",
     fornecedor_id: "",
     banco_id: "",
     valor: "",
@@ -43,7 +43,7 @@ export default function ContasPagar() {
   const [bancos, setBancos] = useState<any[]>([]);
   // Removido tipoDespesa pois não existe na tabela
 
-  // Lista de despesas removida - agora usa as categorias cadastradas no sistema
+  // Lista de categorias de despesas - agora usa as categorias cadastradas no sistema
 
   useEffect(() => {
     if (user) fetchData();
@@ -54,14 +54,14 @@ export default function ContasPagar() {
     try {
       if (!user) return;
 
-      // Carregar categorias e fornecedores primeiro
+      // Carregar categorias de despesas e fornecedores primeiro
       const [categoriasResult, fornecedoresResult] = await Promise.all([
-        supabase.from('categorias').select('*').eq('tipo', 'despesa'),
+        supabase.from('categorias').select('*').eq('tipo', 'despesa').eq('user_id', user.id),
         supabase.from('fornecedores').select('*')
       ]);
-      console.log('Categorias do Supabase:', categoriasResult.data);
+      console.log('Categorias de despesas do Supabase:', categoriasResult.data);
       console.log('Fornecedores do Supabase:', fornecedoresResult.data);
-      setCategorias(categoriasResult.data || []);
+      setDespesas(categoriasResult.data || []);
       setFornecedores(fornecedoresResult.data || []);
 
       // Carregar contas a pagar (tratar erro separadamente)
@@ -102,8 +102,8 @@ export default function ContasPagar() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('handleSubmit chamado', { editandoConta, formData });
-    if (!formData.categoria_id) {
-      toast({ title: "Erro", description: "Selecione uma categoria", variant: "destructive" });
+    if (!formData.despesa_id) {
+      toast({ title: "Erro", description: "Selecione uma despesa", variant: "destructive" });
       return;
     }
 
@@ -136,7 +136,7 @@ export default function ContasPagar() {
       console.log('Atualizando conta:', contaParaEditar.id, formData);
               const { error, data } = await supabase.from('contas_pagar').update({
           descricao: formData.descricao,
-          categoria_id: formData.categoria_id || null,
+          categoria_id: formData.despesa_id || null,
           fornecedor_id: formData.fornecedor_id || null,
           banco_id: formData.banco_id || null,
           valor: valorNumerico,
@@ -154,7 +154,7 @@ export default function ContasPagar() {
       }
       setEditandoConta(null);
       setIsDialogOpen(false);
-      setFormData({ descricao: "", categoria_id: "", fornecedor_id: "", banco_id: "", valor: "", data_vencimento: "", data_pagamento: "", observacoes: "", parcelas: 1, data_nota_fiscal: "", referencia_nota_fiscal: "", tipo_despesa: "operacional" });
+      setFormData({ descricao: "", despesa_id: "", fornecedor_id: "", banco_id: "", valor: "", data_vencimento: "", data_pagamento: "", observacoes: "", parcelas: 1, data_nota_fiscal: "", referencia_nota_fiscal: "" });
       fetchData();
       toast({ title: 'Sucesso', description: 'Conta atualizada com sucesso!' });
       console.log('Conta atualizada com sucesso!');
@@ -188,7 +188,7 @@ export default function ContasPagar() {
         const vencimento = new Date(dataVencimento);
         vencimento.setMonth(vencimento.getMonth() + i);
         // Buscar nome da categoria selecionada
-        const categoriaSelecionada = categorias.find(c => c.id === formData.categoria_id);
+        const categoriaSelecionada = despesas.find(cat => cat.id === formData.despesa_id);
         const contaParaInserir: any = {
           user_id: user?.id,
           descricao: categoriaSelecionada ? categoriaSelecionada.nome : 'Sem categoria',
@@ -207,7 +207,7 @@ export default function ContasPagar() {
         }
 
         // Adicionar campos obrigatórios
-        contaParaInserir.categoria_id = formData.categoria_id;
+        contaParaInserir.categoria_id = formData.despesa_id;
         contaParaInserir.banco_id = formData.banco_id;
         
         // Adicionar campos opcionais apenas se não forem vazios
@@ -390,7 +390,7 @@ export default function ContasPagar() {
     return <div className="flex justify-center items-center h-64">Carregando...</div>;
   }
 
-  console.log('Categorias no render:', categorias);
+      console.log('Categorias no render:', despesas);
   const contasOrdenadas = [...contasPagar].sort((a, b) => {
     // Ordenar por data de vencimento (mais antiga primeiro - ordem crescente)
     const dateA = new Date(a.data_vencimento);
@@ -418,7 +418,7 @@ export default function ContasPagar() {
     if (filtroVencimentoFim) ok = ok && conta.data_vencimento <= filtroVencimentoFim;
     return ok && (
       String(conta.descricao || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      categorias.find(c => c.id === conta.categoria_id)?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              despesas.find(cat => cat.id === conta.categoria_id)?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       fornecedores.find(f => f.id === conta.fornecedor_id)?.nome?.toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
@@ -445,29 +445,29 @@ export default function ContasPagar() {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-5 gap-4 pt-4">
-              {/* Campo descrição removido - será preenchido automaticamente baseado na categoria */}
+                              {/* Campo descrição removido - será preenchido automaticamente baseado na categoria */}
               <div className="space-y-2 col-span-2">
-                <Label htmlFor="categoria">Categoria</Label>
+                <Label htmlFor="despesa">Nome da Despesa</Label>
                 <Select 
-                  value={formData.categoria_id} 
+                  value={formData.despesa_id} 
                   onValueChange={(value) => {
-                    const categoriaSelecionada = categorias.find(cat => cat.id === value);
+                    const categoriaSelecionada = despesas.find(cat => cat.id === value);
                     setFormData({
                       ...formData, 
-                      categoria_id: value,
+                      despesa_id: value,
                       descricao: categoriaSelecionada ? categoriaSelecionada.nome : ""
                     });
                   }} 
                   required
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma categoria" />
+                    <SelectValue placeholder="Selecione uma despesa" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categorias.length === 0 && (
-                      <div className="p-2 text-muted-foreground">Nenhuma categoria encontrada</div>
+                    {despesas.length === 0 && (
+                      <div className="p-2 text-muted-foreground">Nenhuma despesa encontrada</div>
                     )}
-                    {categorias.map(categoria => (
+                    {despesas.map(categoria => (
                       <SelectItem key={categoria.id} value={categoria.id}>{categoria.nome}</SelectItem>
                     ))}
                   </SelectContent>
@@ -773,7 +773,7 @@ export default function ContasPagar() {
                     <td className="p-4 font-medium">
                       {conta.descricao}
                     </td>
-                    <td className="p-4">{categorias.find(c => c.id === conta.categoria_id)?.nome || 'Sem categoria'}</td>
+                    <td className="p-4">{despesas.find(cat => cat.id === conta.categoria_id)?.nome || 'Sem categoria'}</td>
                     <td className="p-4">{fornecedores.find(f => f.id === conta.fornecedor_id)?.nome || 'Sem fornecedor'}</td>
                     <td className="p-4">{conta.data_vencimento ? conta.data_vencimento.split('-').reverse().join('/') : '-'}</td>
                     {/* Removido campo banco pois não existe na tabela */}
@@ -791,8 +791,8 @@ export default function ContasPagar() {
                         <Button variant="ghost" size="sm" onClick={() => {
                           setEditandoConta(conta);
                           setFormData({
-                            descricao: categorias.find(c => c.id === conta.categoria_id)?.nome || conta.descricao,
-                            categoria_id: conta.categoria_id,
+                            descricao: despesas.find(cat => cat.id === conta.categoria_id)?.nome || conta.descricao,
+                            despesa_id: conta.categoria_id,
                             fornecedor_id: conta.fornecedor_id,
                             valor: String(conta.valor),
                             data_vencimento: conta.data_vencimento,
@@ -801,7 +801,6 @@ export default function ContasPagar() {
                             parcelas: 1,
                             data_nota_fiscal: conta.data_nota_fiscal || "",
                             referencia_nota_fiscal: conta.referencia_nota_fiscal || ""
-                            // Removido tipo_despesa pois não existe na tabela
                           });
                                   // Removido tipoDespesa pois não existe na tabela
                           setIsDialogOpen(true);
@@ -841,7 +840,7 @@ export default function ContasPagar() {
           {visualizarConta && (
             <div className="space-y-2">
               <div><b>Descrição:</b> {visualizarConta.descricao}</div>
-              <div><b>Categoria:</b> {categorias.find(c => c.id === visualizarConta.categoria_id)?.nome || 'Sem categoria'}</div>
+              <div><b>Categoria:</b> {despesas.find(cat => cat.id === visualizarConta.categoria_id)?.nome || 'Sem categoria'}</div>
               <div><b>Fornecedor:</b> {fornecedores.find(f => f.id === visualizarConta.fornecedor_id)?.nome || 'Sem fornecedor'}</div>
               <div><b>Valor:</b> R$ {Number(visualizarConta.valor).toFixed(2)}</div>
               <div><b>Vencimento:</b> {new Date(visualizarConta.data_vencimento).toLocaleDateString('pt-BR')}</div>

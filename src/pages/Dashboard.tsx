@@ -1,6 +1,15 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useReceitas } from "@/hooks/useReceitas";
+import { useContasPagar } from "@/hooks/useContasPagar";
+import { useAuth } from "@/hooks/useAuth";
+import { formatCurrency } from "@/lib/utils";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   TrendingUp,
@@ -11,621 +20,341 @@ import {
   Calendar,
   Target,
   BarChart3,
-  ArrowRight,
-  ArrowUp,
-  ArrowDown
+  ChevronLeft,
+  ChevronRight,
+  PiggyBank,
+  Receipt
 } from "lucide-react";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent
+} from "@/components/ui/accordion";
+import FaturamentoChart from "@/components/FaturamentoChart";
+
+interface Banco {
+  id: string;
+  nome: string;
+  saldo_inicial: number;
+  saldo_atual: number;
+  tipo: string;
+  ativo: boolean;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ContaPagar {
+  id: string;
+  descricao: string;
+  valor: number;
+  data_vencimento: string;
+  data_pagamento: string | null;
+  status: 'Pendente' | 'Pago';
+}
+
+interface ContaReceber {
+  id: string;
+  descricao: string;
+  valor: number;
+  data_vencimento: string;
+  data_recebimento: string | null;
+  status: 'Pendente' | 'Recebido';
+  tipo_receita: string;
+  taxa_cartao_credito: number | null;
+  taxa_boleto: number | null;
+  taxa_percentual?: number;
+  valor_taxa?: number;
+  valor_liquido?: number;
+}
 
 export default function Dashboard() {
-  const [receitas, setReceitas] = useState([]);
-  const [contasPagar, setContasPagar] = useState([]);
-  const [categorias, setCategorias] = useState([]);
-  const [modalidades, setModalidades] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const { user } = useAuth();
+  const { data: receitas } = useReceitas(user?.id);
+  const { data: contasPagar } = useContasPagar(user?.id);
+  const [bancos, setBancos] = useState<Banco[]>([]);
+  const [categoriasDespesas, setCategoriasDespesas] = useState<any[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date());
 
-  // Verificar autenticação
+  // Fetch bancos
+  const fetchBancos = async () => {
+    if (!user) return;
+    const { data } = await supabase.from("bancos").select("*").eq("user_id", user.id);
+    setBancos(data as Banco[] || []);
+  };
+
+  // Fetch categorias de despesas
+  const fetchCategoriasDespesas = async () => {
+    if (!user) return;
+    const { data } = await supabase.from("categorias").select("*").eq("tipo", "despesa");
+    setCategoriasDespesas(data || []);
+  };
+
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-    };
-    getUser();
-  }, []);
+    fetchBancos();
+    fetchCategoriasDespesas();
+  }, [user]);
 
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      try {
-        // Verificar autenticação
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        console.log('Usuário autenticado:', user?.id);
-        
-        if (authError) {
-          console.error('Erro de autenticação:', authError);
-        }
+  const {
+    totalReceitas,
+    custosVariaveis,
+    margemContribuicao,
+    despesasFixas,
+    lucroOperacional,
+    investimentos,
+    resultadoLiquido,
+    receitaNaoOperacional,
+    despesaNaoOperacional,
+    resultadoNaoOperacional,
+    totalTarifasModalidades,
+    custosOperacionais,
+    outrosInvestimentos,
+    investimentosIfood,
+    diferencaMeta,
+    fatMinimoDiario,
+    diasUteis,
+    contasVencendoHoje,
+    aReceberProximos7Dias,
+    aPagarProximos7Dias
+  } = useMemo(() => {
+    const primeiroDia = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1);
+    const ultimoDia = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0, 23, 59, 59);
 
-        // Buscar dados das tabelas corretas
-        const { data: receitasData, error: receitasError } = await supabase.from('contas_receber').select('*');
-        const { data: contasPagarData, error: contasPagarError } = await supabase.from('contas_pagar').select('*');
-        const { data: categoriasData, error: categoriasError } = await supabase.from('categorias').select('*');
-        const { data: modalidadesData, error: modalidadesError } = await supabase.from('modalidades_receita').select('*');
+    console.log('Mês selecionado:', selectedMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }));
+    console.log('Primeiro dia do mês:', primeiroDia);
+    console.log('Último dia do mês:', ultimoDia);
 
-        // Log para debug
-        console.log('Dados carregados:', {
-          receitas: receitasData?.length || 0,
-          contasPagar: contasPagarData?.length || 0,
-          categorias: categoriasData?.length || 0,
-          modalidades: modalidadesData?.length || 0
+    const receitasMesAtual = (receitas || []).filter(r => {
+      const dataReceita = new Date(r.data_vencimento);
+      return dataReceita >= primeiroDia && dataReceita <= ultimoDia;
+    });
+
+    console.log('Receitas filtradas para o mês atual (\'receitasMesAtual\'):', receitasMesAtual);
+
+    const despesasMesAtual = (contasPagar || []).filter(d => {
+      const dataDespesa = new Date(d.data_vencimento);
+      return dataDespesa >= primeiroDia && dataDespesa <= ultimoDia;
+    });
+
+    const totalReceitas = (receitasMesAtual || []).reduce((sum, r) => sum + r.valor, 0);
+
+    const totalTarifasModalidades = (receitasMesAtual || []).reduce((sum, r) => {
+      // Usar o campo valor_taxa que já está calculado
+      const valorTaxa = (r as any).valor_taxa || 0;
+      
+      // Debug log para taxas
+      if (valorTaxa > 0) {
+        console.log('💰 Taxa encontrada:', {
+          descricao: r.descricao,
+          valor: r.valor,
+          taxa_percentual: (r as any).taxa_percentual,
+          valor_taxa: valorTaxa
+        });
+      }
+      
+      return sum + valorTaxa;
+    }, 0);
+
+          console.log('📊 Resumo Taxas Modalidades:', {
+        totalTarifasModalidades: totalTarifasModalidades,
+        receitasComTaxa: (receitasMesAtual || []).filter(r => (r as any).valor_taxa > 0).map(r => ({
+          descricao: r.descricao,
+          valor: r.valor,
+          valor_taxa: (r as any).valor_taxa
+        }))
+      });
+
+    const despesasFixas = (despesasMesAtual || []).filter(d => {
+      const categoria = categoriasDespesas.find(cat => cat.id === d.categoria_id);
+      return categoria?.categoria === 'Despesa Fixa';
+    }).reduce((sum, d) => sum + d.valor, 0);
+
+    const custosOperacionais = (despesasMesAtual || []).filter(d => {
+      const categoria = categoriasDespesas.find(cat => cat.id === d.categoria_id);
+      return categoria?.categoria === 'Custo Variável';
+    }).reduce((sum, d) => sum + d.valor, 0);
+
+    const custosVariaveis = custosOperacionais + totalTarifasModalidades;
+    
+    // Total de investimentos = Outros Investimentos + Ifood Voucher
+    const outrosInvestimentos = (despesasMesAtual || []).filter(d => {
+      const categoria = categoriasDespesas.find(cat => cat.id === d.categoria_id);
+      return categoria?.categoria === 'Investimento';
+    }).reduce((sum, d) => sum + d.valor, 0);
+
+    // Debug: verificar todas as receitas
+            console.log('📋 Todas as receitas do mês:', {
+          total: receitasMesAtual?.length || 0,
+          receitas: receitasMesAtual?.map(r => ({
+            descricao: r.descricao,
+            valor: r.valor,
+            tipo_receita: (r as any).tipo_receita,
+            data_vencimento: r.data_vencimento
+          })) || []
         });
 
-        // Log detalhado dos dados
-        if (receitasData && receitasData.length > 0) {
-          console.log('Exemplo de receita:', receitasData[0]);
+    const investimentosIfood = (receitasMesAtual || []).filter(r => {
+      // Verificar se é APENAS "Ifood Voucher" (não "Ifood" sozinho)
+      const descricaoLower = r.descricao.toLowerCase();
+      const isIfoodVoucher = descricaoLower === 'ifood voucher' || 
+                            descricaoLower.includes('ifood voucher');
+      
+      // Debug log para todas as receitas
+              console.log('🔍 Verificando receita:', {
+          descricao: r.descricao,
+          descricaoLower: descricaoLower,
+          valor: r.valor,
+          cliente_nome: r.cliente_nome,
+          tipo_receita: (r as any).tipo_receita,
+          isIfoodVoucher: isIfoodVoucher
+        });
+      
+              if (isIfoodVoucher) {
+          console.log('✅ Receita Ifood Voucher encontrada:', {
+            descricao: r.descricao,
+            valor: r.valor,
+            cliente_nome: r.cliente_nome,
+            tipo_receita: (r as any).tipo_receita
+          });
         }
-        if (contasPagarData && contasPagarData.length > 0) {
-          console.log('Exemplo de conta a pagar:', contasPagarData[0]);
-        }
-        if (categoriasData && categoriasData.length > 0) {
-          console.log('Categorias disponíveis:', categoriasData.map(cat => ({ id: cat.id, nome: cat.nome, tipo: cat.tipo })));
-        }
-        if (modalidadesData && modalidadesData.length > 0) {
-          console.log('Modalidades disponíveis:', modalidadesData.map(mod => ({ id: mod.id, nome: mod.nome, taxa_percentual: mod.taxa_percentual })));
-        }
+      
+      return isIfoodVoucher;
+    }).reduce((sum, r) => sum + r.valor, 0);
 
-        if (receitasError) console.error('Erro ao carregar receitas:', receitasError);
-        if (contasPagarError) console.error('Erro ao carregar contas a pagar:', contasPagarError);
-        if (categoriasError) console.error('Erro ao carregar categorias:', categoriasError);
-        if (modalidadesError) console.error('Erro ao carregar modalidades:', modalidadesError);
+    console.log('📊 Resumo Ifood Voucher:', {
+      totalReceitas: receitasMesAtual?.length || 0,
+      investimentosIfood: investimentosIfood,
+      receitasFiltradas: (receitasMesAtual || []).filter(r => {
+        const descricaoLower = r.descricao.toLowerCase();
+        return descricaoLower === 'ifood voucher' || 
+               descricaoLower.includes('ifood voucher');
+      }).map(r => ({ descricao: r.descricao, valor: r.valor }))
+    });
 
-        setReceitas(receitasData || []);
-        setContasPagar(contasPagarData || []);
-        setCategorias(categoriasData || []);
-        setModalidades(modalidadesData || []);
-      } catch (error) {
-        console.error('Erro geral ao carregar dados:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchData();
-  }, []);
+    const investimentos = outrosInvestimentos + investimentosIfood;
 
-  // Estado para o mês selecionado
-  const [mesSelecionado, setMesSelecionado] = useState(() => {
+    // Debug logs
+    console.log('Debug Investimentos:', {
+      totalInvestimentos: investimentos,
+      investimentosIfood: investimentosIfood,
+      outrosInvestimentos: outrosInvestimentos,
+      receitasMesAtual: receitasMesAtual?.length || 0,
+      despesasMesAtual: despesasMesAtual?.length || 0
+    });
+
+    const margemContribuicao = totalReceitas - custosVariaveis;
+    const lucroOperacional = margemContribuicao - despesasFixas;
+    const resultadoLiquido = lucroOperacional - investimentos;
+
+    // Receitas e despesas não operacionais
+    const receitaNaoOperacional = (receitasMesAtual || []).filter(r => (r as any).tipo_receita === 'nao_operacional').reduce((sum, r) => sum + r.valor, 0);
+    const despesaNaoOperacional = (despesasMesAtual || []).filter(d => {
+      const categoria = categoriasDespesas.find(cat => cat.id === d.categoria_id);
+      return categoria?.categoria === 'Despesa Não Operacional';
+    }).reduce((sum, d) => sum + d.valor, 0);
+    const resultadoNaoOperacional = receitaNaoOperacional - despesaNaoOperacional;
+
+    // Cálculos para ponto de equilíbrio
+    const metaMensal = 10000;
+    const diferencaMeta = totalReceitas - metaMensal;
+    const diasUteis = 22;
+    const fatMinimoDiario = metaMensal / diasUteis;
+
+    // Contas vencendo hoje
     const hoje = new Date();
-    return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-  });
+    const contasVencendoHoje = (contasPagar || []).filter(c => {
+      const dataVencimento = new Date(c.data_vencimento);
+      return dataVencimento.toDateString() === hoje.toDateString() && c.status === 'Pendente';
+    }).length;
 
-  // Estados para controlar dropdowns (se necessário no futuro)
-  // const [custosVariaveisExpanded, setCustosVariaveisExpanded] = useState(false);
-  // const [investimentosExpanded, setInvestimentosExpanded] = useState(false);
+    // Contas a receber próximos 7 dias
+    const proximos7Dias = new Date(hoje.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const aReceberProximos7Dias = (receitas || []).filter(r => {
+      const dataVencimento = new Date(r.data_vencimento);
+      return dataVencimento >= hoje && dataVencimento <= proximos7Dias && r.status === 'Pendente';
+    }).reduce((sum, r) => sum + r.valor, 0);
 
-  // Função para obter o primeiro e último dia do mês selecionado
-  const getMesSelecionado = (mesAno: string) => {
-    const [ano, mes] = mesAno.split('-').map(Number);
-    const primeiroDia = new Date(ano, mes - 1, 1);
-    const ultimoDia = new Date(ano, mes, 0);
-    return { primeiroDia, ultimoDia };
-  };
+    // Contas a pagar próximos 7 dias
+    const aPagarProximos7Dias = (contasPagar || []).filter(c => {
+      const dataVencimento = new Date(c.data_vencimento);
+      return dataVencimento >= hoje && dataVencimento <= proximos7Dias && c.status === 'Pendente';
+    }).reduce((sum, c) => sum + c.valor, 0);
 
-  // Função para filtrar receitas por período (baseado na data de recebimento)
-  const filtrarReceitasPorPeriodo = (receitas: any[], dataInicio: Date, dataFim: Date) => {
-    return receitas.filter(receita => {
-      // Usar data de recebimento se existir, senão usar data de vencimento
-      const dataReferencia = receita.data_recebimento || receita.data_vencimento;
-      if (!dataReferencia) return false;
-      const data = new Date(dataReferencia);
-      return data >= dataInicio && data <= dataFim;
-    });
-  };
-
-  // Função para filtrar despesas por período (baseado na data de pagamento)
-  const filtrarDespesasPorPeriodo = (despesas: any[], dataInicio: Date, dataFim: Date) => {
-    return despesas.filter(despesa => {
-      // Usar data de pagamento se existir, senão usar data de vencimento
-      const dataReferencia = despesa.data_pagamento || despesa.data_vencimento;
-      if (!dataReferencia) return false;
-      const data = new Date(dataReferencia);
-      return data >= dataInicio && data <= dataFim;
-    });
-  };
-
-
-
-  // Obter período do mês selecionado
-  const { primeiroDia, ultimoDia } = getMesSelecionado(mesSelecionado);
-
-  // Filtrar dados do mês atual baseado nas datas de vencimento
-  const receitasMesAtual = filtrarReceitasPorPeriodo(receitas, primeiroDia, ultimoDia);
-  const despesasMesAtual = filtrarDespesasPorPeriodo(contasPagar, primeiroDia, ultimoDia);
-
-  // Usar apenas os dados filtrados do mês selecionado
-  const receitasParaUsar = receitasMesAtual;
-  const despesasParaUsar = despesasMesAtual;
-
-  // Log para debug dos dados filtrados
-  console.log('Dados filtrados do mês atual:', {
-    mesSelecionado,
-    receitasTotal: receitas.length,
-    receitasMesAtual: receitasMesAtual.length,
-    contasPagarTotal: contasPagar.length,
-    despesasMesAtual: despesasMesAtual.length,
-    primeiroDia: primeiroDia.toISOString(),
-    ultimoDia: ultimoDia.toISOString()
-  });
-
-  // Log detalhado das receitas e despesas
-  if (receitas.length > 0) {
-    console.log('Todas as receitas:', receitas.map(r => ({
-      id: r.id,
-      descricao: r.descricao,
-      valor: r.valor,
-      data_vencimento: r.data_vencimento,
-      data_recebimento: r.data_recebimento,
-      status: r.status
-    })));
-  }
-
-  if (contasPagar.length > 0) {
-    console.log('Todas as contas a pagar:', contasPagar.map(c => ({
-      id: c.id,
-      descricao: c.descricao,
-      valor: c.valor,
-      data_vencimento: c.data_vencimento,
-      data_pagamento: c.data_pagamento,
-      status: c.status,
-      categoria_id: c.categoria_id
-    })));
-  } else {
-    console.log('Nenhuma conta a pagar encontrada');
-  }
-
-  if (receitasMesAtual.length > 0) {
-    console.log('Receitas do mês atual:', receitasMesAtual.map(r => ({
-      id: r.id,
-      descricao: r.descricao,
-      valor: r.valor,
-      data_vencimento: r.data_vencimento,
-      status: r.status
-    })));
-  }
-
-  if (despesasMesAtual.length > 0) {
-    console.log('Despesas do mês atual:', despesasMesAtual.map(d => ({
-      id: d.id,
-      descricao: d.descricao,
-      valor: d.valor,
-      data_vencimento: d.data_vencimento,
-      status: d.status,
-      categoria_id: d.categoria_id
-    })));
-  } else {
-    console.log('Nenhuma despesa encontrada para o mês atual');
-  }
-
-  // Filtrar receitas e despesas do mês atual por tipo
-  // Separar receitas por modalidade: Ifood Voucher vai para investimento
-  const receitasOperacionais = (receitasParaUsar || []).filter(r => 
-    r.descricao.toLowerCase() !== 'ifood voucher'
-  );
-  const receitasInvestimento = (receitasParaUsar || []).filter(r => 
-    r.descricao.toLowerCase() === 'ifood voucher'
-  );
-  const receitasNaoOperacionais = []; // Outras receitas não operacionais
-  const totalReceitas = receitasOperacionais.reduce((sum, c) => sum + (c.valor || 0), 0);
-  // Calcular taxas modalidades baseado nas modalidades configuradas
-  const totalTarifasModalidades = receitasOperacionais.reduce((sum, r) => {
-    // Buscar modalidade baseada na descrição da receita
-    const modalidade = modalidades.find(m => m.nome.toLowerCase() === r.descricao.toLowerCase());
-    const taxaPercentual = modalidade ? modalidade.taxa_percentual : 10; // 10% padrão se não encontrar
-    const taxa = (r.valor * taxaPercentual) / 100;
-    return sum + taxa;
-  }, 0);
-
-  const contasPagarOperacionais = despesasParaUsar; // Todas as despesas são operacionais
-
-  // Log para debug das despesas operacionais
-  console.log('Despesas operacionais:', {
-    total: contasPagarOperacionais.length,
-    detalhes: contasPagarOperacionais.map(c => ({
-      id: c.id,
-      descricao: c.descricao,
-      valor: c.valor,
-      categoria_id: c.categoria_id,
-      categoria_nome: categorias.find(cat => cat.id === c.categoria_id)?.nome || 'Sem categoria',
-      data_vencimento: c.data_vencimento,
-      data_pagamento: c.data_pagamento
-    }))
-  });
-
-  // Log para debug dos cálculos
-  console.log('Cálculos do dashboard:', {
-    receitasOperacionais: receitasOperacionais.length,
-    receitasInvestimento: receitasInvestimento.length,
-    receitasNaoOperacionais: receitasNaoOperacionais.length,
-    totalReceitas,
-    totalTarifasModalidades,
-    contasPagarOperacionais: contasPagarOperacionais.length,
-    despesasMesAtual: despesasMesAtual.length,
-    usandoTodosOsDados: receitasMesAtual.length === 0 && receitas.length > 0
-  });
-
-  // Log detalhado das receitas separadas
-  if (receitasOperacionais.length > 0) {
-    console.log('Receitas operacionais:', receitasOperacionais.map(r => ({
-      descricao: r.descricao,
-      valor: r.valor
-    })));
-  }
-  if (receitasInvestimento.length > 0) {
-    console.log('Receitas investimento (Ifood Voucher):', receitasInvestimento.map(r => ({
-      descricao: r.descricao,
-      valor: r.valor
-    })));
-  }
-
-  // Log detalhado das taxas modalidades
-  if (receitasOperacionais.length > 0) {
-    console.log('Detalhes das taxas modalidades:', receitasOperacionais.map(r => {
-      const modalidade = modalidades.find(m => m.nome.toLowerCase() === r.descricao.toLowerCase());
-      return {
-        descricao: r.descricao,
-        valor: r.valor,
-        modalidade_encontrada: modalidade?.nome || 'Não encontrada',
-        taxa_percentual: modalidade ? modalidade.taxa_percentual : 10,
-        taxa_calculada: (r.valor * (modalidade ? modalidade.taxa_percentual : 10)) / 100
-      };
-    }));
-    console.log('Total das taxas modalidades:', totalTarifasModalidades);
-  }
-
-  // Categorias fixas: buscar por nomes específicos
-  const categoriasFixasIds = categorias
-    ? categorias.filter(cat => 
-        cat.nome.toLowerCase().includes('água') || 
-        cat.nome.toLowerCase().includes('agua') ||
-        cat.nome.toLowerCase().includes('gás') ||
-        cat.nome.toLowerCase().includes('gas') ||
-        cat.nome.toLowerCase().includes('internet') ||
-        cat.nome.toLowerCase().includes('fixa') || 
-        cat.nome.toLowerCase().includes('fixo') ||
-        cat.nome.toLowerCase().includes('energia') ||
-        cat.nome.toLowerCase().includes('eletrica') ||
-        cat.nome.toLowerCase().includes('elétrica')
-      ).map(cat => cat.id)
-    : [];
-  
-  const categoriasInvestimentoIds = categorias
-    ? categorias.filter(cat => 
-        cat.nome.toLowerCase().includes('investimento') ||
-        cat.nome.toLowerCase().includes('facebook')
-      ).map(cat => cat.id)
-    : [];
-
-  const categoriasCustoVariavelIds = categorias
-    ? categorias.filter(cat => 
-        cat.nome.toLowerCase().includes('alimentos') ||
-        cat.nome.toLowerCase().includes('bebidas') ||
-        cat.nome.toLowerCase().includes('variável') || 
-        cat.nome.toLowerCase().includes('variavel') ||
-        cat.nome.toLowerCase().includes('custo')
-      ).map(cat => cat.id)
-    : [];
-
-  // Log das categorias para debug
-  if (categorias.length > 0) {
-    console.log('Categorias disponíveis:', categorias.map(cat => ({
-      id: cat.id,
-      nome: cat.nome,
-      tipo: cat.tipo
-    })));
-    console.log('Nomes das categorias:', categorias.map(cat => cat.nome));
-    console.log('Categorias com IDs fixos:', categorias.filter(cat => 
-      cat.nome.toLowerCase().includes('água') || 
-      cat.nome.toLowerCase().includes('agua') ||
-      cat.nome.toLowerCase().includes('gás') ||
-      cat.nome.toLowerCase().includes('gas') ||
-      cat.nome.toLowerCase().includes('fixa') || 
-      cat.nome.toLowerCase().includes('fixo')
-    ).map(cat => ({ id: cat.id, nome: cat.nome })));
-    console.log('Categorias fixas IDs:', categoriasFixasIds);
-    console.log('Categorias investimento IDs:', categoriasInvestimentoIds);
-    console.log('Categorias custo variável IDs:', categoriasCustoVariavelIds);
-    
-    // Log das categorias encontradas
-    const categoriasFixas = categorias.filter(cat => 
-      cat.nome.toLowerCase().includes('fixa') || 
-      cat.nome.toLowerCase().includes('fixo')
-    );
-    const categoriasInvestimento = categorias.filter(cat => 
-      cat.nome.toLowerCase().includes('investimento')
-    );
-    const categoriasCustoVariavel = categorias.filter(cat => 
-      cat.nome.toLowerCase().includes('variável') || 
-      cat.nome.toLowerCase().includes('variavel') ||
-      cat.nome.toLowerCase().includes('custo')
-    );
-    
-    console.log('Categorias fixas encontradas:', categoriasFixas.map(cat => cat.nome));
-    console.log('Categorias investimento encontradas:', categoriasInvestimento.map(cat => cat.nome));
-    console.log('Categorias custo variável encontradas:', categoriasCustoVariavel.map(cat => cat.nome));
-    
-    // Verificar se há categorias que podem ser consideradas fixas
-    const categoriasDespesa = categorias.filter(cat => cat.tipo === 'despesa');
-    console.log('Categorias de despesa:', categoriasDespesa.map(cat => cat.nome));
-    
-    // Log detalhado de todas as contas a pagar
-    console.log('Todas as contas a pagar:', contasPagarOperacionais.map(c => ({
-      id: c.id,
-      descricao: c.descricao,
-      valor: c.valor,
-      categoria_id: c.categoria_id,
-      categoria_nome: categorias.find(cat => cat.id === c.categoria_id)?.nome || 'Sem categoria'
-    })));
-  }
-
-  // Log para debug das despesas antes da filtragem
-      console.log('Despesas antes da filtragem por categoria:', contasPagarOperacionais.map(c => ({
-      id: c.id,
-      descricao: c.descricao,
-      valor: c.valor,
-      categoria_id: c.categoria_id,
-      categoria_nome: categorias.find(cat => cat.id === c.categoria_id)?.nome || 'Sem categoria',
-      categoria_tipo: categorias.find(cat => cat.id === c.categoria_id)?.categoria || 'Sem tipo'
-    })));
-    
-    // Log detalhado para debug da filtragem
-    console.log('IDs das categorias fixas:', categoriasFixasIds);
-    console.log('IDs das despesas:', contasPagarOperacionais.map(c => c.categoria_id));
-    console.log('Verificação de cada despesa:');
-    contasPagarOperacionais.forEach((c, index) => {
-      const categoria = categorias.find(cat => cat.id === c.categoria_id);
-      const isFixa = categoriasFixasIds.includes(c.categoria_id);
-      const isCustoVariavel = categoriasCustoVariavelIds.includes(c.categoria_id);
-      console.log(`Despesa ${index + 1}:`, {
-        id: c.id,
-        descricao: c.descricao,
-        categoria_id: c.categoria_id,
-        categoria_nome: categoria?.nome || 'Sem categoria',
-        categoria_tipo: categoria?.categoria || 'Sem tipo',
-        isFixa: isFixa,
-        isCustoVariavel: isCustoVariavel,
-        categoriasFixasIds: categoriasFixasIds,
-        categoriasCustoVariavelIds: categoriasCustoVariavelIds,
-        categoriaIncluida: categoriasFixasIds.includes(c.categoria_id),
-        categoriaCustoVariavelIncluida: categoriasCustoVariavelIds.includes(c.categoria_id)
-      });
-    });
-    
-    // Log detalhado das categorias fixas
-    const categoriasFixasDetalhadas = categorias.filter(cat => 
-      cat.nome.toLowerCase().includes('água') || 
-      cat.nome.toLowerCase().includes('agua') ||
-      cat.nome.toLowerCase().includes('gás') ||
-      cat.nome.toLowerCase().includes('gas') ||
-      cat.nome.toLowerCase().includes('fixa') || 
-      cat.nome.toLowerCase().includes('fixo')
-    );
-    console.log('Categorias fixas detalhadas:', categoriasFixasDetalhadas.map(cat => ({ 
-      id: cat.id, 
-      nome: cat.nome, 
-      categoria: cat.categoria 
-    })));
-    console.log('IDs das categorias fixas encontradas:', categoriasFixasDetalhadas.map(cat => cat.id));
-
-  // Log para debug da filtragem
-  const despesasFiltradasFixas = contasPagarOperacionais.filter(c => categoriasFixasIds.includes(c.categoria_id));
-  console.log('Despesas filtradas como fixas:', despesasFiltradasFixas.map(c => ({
-    id: c.id,
-    descricao: c.descricao,
-    valor: c.valor,
-    categoria_id: c.categoria_id,
-    categoria_nome: categorias.find(cat => cat.id === c.categoria_id)?.nome || 'Sem categoria'
-  })));
-
-  const despesasFixas = contasPagarOperacionais
-    .filter(c => categoriasFixasIds.includes(c.categoria_id))
-    .reduce((sum, c) => sum + (c.valor || 0), 0);
-
-  // Investimentos: despesas com categoria investimento + receitas do Ifood Voucher
-  const investimentosDespesas = contasPagarOperacionais
-    .filter(c => categoriasInvestimentoIds.includes(c.categoria_id))
-    .reduce((sum, c) => sum + (c.valor || 0), 0);
-  
-  const investimentosReceitas = receitasInvestimento
-    .reduce((sum, r) => sum + (r.valor || 0), 0);
-  
-  const investimentos = investimentosDespesas + investimentosReceitas;
-
-  // Custos variáveis: despesas com categoria "Custo Variável"
-  const custosVariaveis = contasPagarOperacionais
-    .filter(c => categoriasCustoVariavelIds.includes(c.categoria_id))
-    .reduce((sum, c) => sum + (c.valor || 0), 0) + totalTarifasModalidades;
-    
-  // Log para debug dos custos variáveis
-      console.log('Debug custos variáveis:', {
-      contasPagarOperacionais: contasPagarOperacionais.length,
-      categoriasCustoVariavelIds,
-      despesasComCustoVariavel: contasPagarOperacionais.filter(c => categoriasCustoVariavelIds.includes(c.categoria_id)),
+    return {
+      totalReceitas,
+      custosVariaveis,
+      margemContribuicao,
+      despesasFixas,
+      lucroOperacional,
+      investimentos,
+      resultadoLiquido,
+      receitaNaoOperacional,
+      despesaNaoOperacional,
+      resultadoNaoOperacional,
       totalTarifasModalidades,
-      custosVariaveis
-    });
-    
-    // Log detalhado das despesas com custo variável
-    console.log('Despesas com custo variável:', contasPagarOperacionais.filter(c => categoriasCustoVariavelIds.includes(c.categoria_id)).map(c => ({
-      id: c.id,
-      descricao: c.descricao,
-      valor: c.valor,
-      categoria_id: c.categoria_id,
-      categoria_nome: categorias.find(cat => cat.id === c.categoria_id)?.nome || 'Sem categoria'
-    })));
-    
-    // Log detalhado para debug dos custos variáveis
-    console.log('IDs das categorias de custo variável:', categoriasCustoVariavelIds);
-    console.log('IDs das despesas:', contasPagarOperacionais.map(c => c.categoria_id));
-    console.log('Verificação de cada despesa para custo variável:');
-    contasPagarOperacionais.forEach((c, index) => {
-      const categoria = categorias.find(cat => cat.id === c.categoria_id);
-      const isCustoVariavel = categoriasCustoVariavelIds.includes(c.categoria_id);
-      console.log(`Despesa ${index + 1} para custo variável:`, {
-        id: c.id,
-        descricao: c.descricao,
-        categoria_id: c.categoria_id,
-        categoria_nome: categoria?.nome || 'Sem categoria',
-        categoria_tipo: categoria?.categoria || 'Sem tipo',
-        isCustoVariavel: isCustoVariavel,
-        categoriasCustoVariavelIds: categoriasCustoVariavelIds,
-        categoriaIncluida: categoriasCustoVariavelIds.includes(c.categoria_id)
-      });
-    });
+      custosOperacionais,
+      outrosInvestimentos,
+      investimentosIfood,
+      diferencaMeta,
+      fatMinimoDiario,
+      diasUteis,
+      contasVencendoHoje,
+      aReceberProximos7Dias,
+      aPagarProximos7Dias
+    };
+  }, [receitas, contasPagar, selectedMonth, categoriasDespesas]);
 
-  // Log para debug dos custos variáveis
-  console.log('Cálculo dos custos variáveis:', {
-    contasPagarOperacionais: contasPagarOperacionais.length,
-    categoriasFixasIds,
-    categoriasInvestimentoIds,
-    categoriasCustoVariavelIds,
-    custosVariaveis,
-    totalTarifasModalidades,
-    despesasFixas,
-    detalhes: contasPagarOperacionais
-      .filter(c => categoriasCustoVariavelIds.includes(c.categoria_id))
-      .map(c => ({
-        id: c.id,
-        descricao: c.descricao,
-        valor: c.valor,
-        categoria_id: c.categoria_id,
-        categoria_nome: categorias.find(cat => cat.id === c.categoria_id)?.nome || 'Sem categoria'
-      }))
-  });
+  const handlePreviousMonth = () => {
+    setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, 1));
+  };
 
-  // Log para debug das despesas fixas
-  console.log('Cálculo das despesas fixas:', {
-    despesasFixas,
-    detalhes: contasPagarOperacionais
-      .filter(c => categoriasFixasIds.includes(c.categoria_id))
-      .map(c => ({
-        id: c.id,
-        descricao: c.descricao,
-        valor: c.valor,
-        categoria_id: c.categoria_id,
-        categoria_nome: categorias.find(cat => cat.id === c.categoria_id)?.nome || 'Sem categoria'
-      }))
-  });
-
-  // Log para debug dos investimentos
-  console.log('Cálculo dos investimentos:', {
-    investimentos,
-    investimentosDespesas,
-    investimentosReceitas,
-    detalhesDespesas: contasPagarOperacionais
-      .filter(c => categoriasInvestimentoIds.includes(c.categoria_id))
-      .map(c => ({
-        id: c.id,
-        descricao: c.descricao,
-        valor: c.valor,
-        categoria_id: c.categoria_id,
-        categoria_nome: categorias.find(cat => cat.id === c.categoria_id)?.nome || 'Sem categoria'
-      })),
-    detalhesReceitas: receitasInvestimento.map(r => ({
-      id: r.id,
-      descricao: r.descricao,
-      valor: r.valor
-    }))
-  });
-
-  const percentualCustosVariaveis = totalReceitas > 0 ? (custosVariaveis / totalReceitas) * 100 : 0;
-  const percentualDespesasFixas = totalReceitas > 0 ? (despesasFixas / totalReceitas) * 100 : 0;
-  const percentualInvestimentos = totalReceitas > 0 ? (investimentos / totalReceitas) * 100 : 0;
-
-  const margemContribuicao = totalReceitas - custosVariaveis;
-  const percentualMargemContribuicao = totalReceitas > 0 ? (margemContribuicao / totalReceitas) * 100 : 0;
-
-  const lucroOperacional = margemContribuicao - despesasFixas;
-  const percentualLucroOperacional = totalReceitas > 0 ? (lucroOperacional / totalReceitas) * 100 : 0;
-
-  const resultadoLiquido = lucroOperacional - investimentos;
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
+  const handleNextMonth = () => {
+    setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1));
   };
 
   const formatPercent = (value: number, total: number) => {
-    return total > 0 ? `${(Math.abs(value) / total * 100).toFixed(0)}%` : '0%';
+    return total > 0 ? ((value / total) * 100).toFixed(0) + "%" : "0%";
   };
 
-  function getDiasUteisRestantes() {
-    const hoje = new Date();
-    const ano = hoje.getFullYear();
-    const mes = hoje.getMonth();
-    const ultimoDia = new Date(ano, mes + 1, 0).getDate();
-    
-    // Calcular total de dias restantes no mês (excluindo hoje)
-    const diasRestantes = ultimoDia - hoje.getDate();
-    
-    // Subtrair 1 dia de folga (trabalhamos todos os dias menos 1)
-    const diasUteis = Math.max(0, diasRestantes - 1);
-    
-    return diasUteis;
-  }
+  const getNumberColor = (value: number) =>
+    value < 0 ? "text-destructive" : "text-foreground";
 
-  const diasUteis = getDiasUteisRestantes();
-
-  const pontoEquilibrio = totalReceitas > 0 && margemContribuicao > 0
-    ? despesasFixas / (margemContribuicao / totalReceitas)
-    : despesasFixas;
-  
-  const diferencaMeta = totalReceitas - pontoEquilibrio;
-  const fatMinimoDiario = diasUteis > 0 ? pontoEquilibrio / diasUteis : 0;
-
-  const receitaNaoOperacional = receitasNaoOperacionais.reduce((sum, c) => sum + (c.valor || 0), 0);
-  const despesasNaoOperacionais = []; // Não há despesas não operacionais na estrutura atual
-  const despesaNaoOperacional = despesasNaoOperacionais.reduce((sum, c) => sum + (c.valor || 0), 0);
-  const resultadoNaoOperacional = receitaNaoOperacional - despesaNaoOperacional;
-  const resultadoGeralLiquido = resultadoLiquido + resultadoNaoOperacional;
-
-  if (loading) {
-    return <div className="flex justify-center items-center h-64">Carregando...</div>;
-  }
-
-  if (!user) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Login Necessário</h2>
-          <button 
-            onClick={() => supabase.auth.signInWithOAuth({ provider: 'google' })}
-            className="bg-primary text-primary-foreground px-4 py-2 rounded"
-          >
-            Fazer Login
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const getNumberColor = (value: number) => value < 0 ? 'text-destructive' : 'text-foreground';
-
-  const hoje = new Date().toISOString().split('T')[0];
-  const proximos7Dias = new Date();
-  proximos7Dias.setDate(proximos7Dias.getDate() + 7);
-  const dataLimite = proximos7Dias.toISOString().split('T')[0];
-
-  const contasVencendoHoje = contasPagar.filter(c => c.data_vencimento === hoje).length;
-  const aReceberProximos7Dias = receitas
-    .filter(r => r.data_vencimento >= hoje && r.data_vencimento <= dataLimite)
-    .reduce((sum, r) => sum + (r.valor || 0), 0);
-  const aPagarProximos7Dias = contasPagar
-    .filter(c => c.data_vencimento >= hoje && c.data_vencimento <= dataLimite)
-    .reduce((sum, c) => sum + (c.valor || 0), 0);
+  const cardData = [
+    {
+      title: "Receita Bruta",
+      value: formatCurrency(totalReceitas),
+      icon: <TrendingUp className="h-5 w-5 text-primary" />,
+      border: "border-l-primary",
+      subtitle: "100% do faturamento"
+    },
+    {
+      title: "Margem de Contribuição",
+      value: formatCurrency(margemContribuicao),
+      icon: <BarChart3 className="h-5 w-5 text-accent" />,
+      border: "border-l-accent",
+      subtitle: `${formatPercent(margemContribuicao, totalReceitas)} do faturamento`
+    },
+    {
+      title: "Lucro Operacional",
+      value: formatCurrency(lucroOperacional),
+      icon: <DollarSign className="h-5 w-5 text-success" />,
+      border: "border-l-success",
+      subtitle: `${formatPercent(lucroOperacional, totalReceitas)} do faturamento`
+    },
+    {
+      title: "Resultado Líquido",
+      value: formatCurrency(resultadoLiquido),
+      icon: <PiggyBank className="h-5 w-5 text-destructive" />,
+      border: "border-l-destructive",
+      subtitle: `${formatPercent(Math.abs(resultadoLiquido), totalReceitas)} do faturamento`,
+      colorClass: getNumberColor(resultadoLiquido)
+    }
+  ];
 
   return (
     <div className="space-y-6">
+      {/* Header com navegação de mês */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Dashboard Financeiro</h1>
@@ -633,376 +362,236 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <select
-              value={mesSelecionado}
-              onChange={(e) => setMesSelecionado(e.target.value)}
-              className="text-sm text-muted-foreground bg-transparent border-none focus:outline-none"
+            <button
+              onClick={handlePreviousMonth}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              {Array.from({ length: 12 }, (_, i) => {
-                const data = new Date(2025, i, 1);
-                const valor = `2025-${String(i + 1).padStart(2, '0')}`;
-                return (
-                  <option key={valor} value={valor}>
-                    {data.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-                  </option>
-                );
-              })}
-            </select>
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-lg">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">
+                {selectedMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+              </span>
+            </div>
+            <button
+              onClick={handleNextMonth}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-l-4 border-l-primary">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Receita Bruta</CardTitle>
-            <TrendingUp className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">
-              {formatCurrency(totalReceitas)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {primeiroDia.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-success">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Margem Contribuição</CardTitle>
-            <BarChart3 className="h-4 w-4 text-success" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">
-              {formatCurrency(margemContribuicao)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {formatPercent(margemContribuicao, totalReceitas)} do faturamento
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-accent">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Lucro Operacional</CardTitle>
-            <DollarSign className="h-4 w-4 text-accent" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${getNumberColor(lucroOperacional)}`}>
-              {formatCurrency(lucroOperacional)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {formatPercent(lucroOperacional, totalReceitas)} do faturamento
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-destructive">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Resultado Líquido</CardTitle>
-            <TrendingDown className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${getNumberColor(resultadoLiquido)}`}>
-              {formatCurrency(resultadoLiquido)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {formatPercent(resultadoLiquido, totalReceitas)} do faturamento
-            </p>
-          </CardContent>
-        </Card>
+      {/* Cards principais */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {cardData.map((card, idx) => (
+          <Card key={idx} className={`border-l-4 ${card.border} hover:shadow-lg transition-shadow`}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+              {card.icon}
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${card.colorClass ?? 'text-foreground'} text-nowrap`}>
+                {card.value}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 text-nowrap">{card.subtitle}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Demonstrativo de Resultado
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Dados baseados em {primeiroDia.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })} (data de recebimento/pagamento)
-            </p>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="space-y-3">
-              <div className="grid grid-cols-12 gap-4 pb-2 border-b border-border/50">
-                <div className="col-span-6 text-left">
-                  <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Descrição</span>
-                </div>
-                <div className="col-span-3 text-right">
-                  <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Valor (R$)</span>
-                </div>
-                <div className="col-span-3 text-right">
-                  <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">%</span>
-                </div>
-              </div>
-
-              {/* Receita Operacional Bruta */}
-              <div className="grid grid-cols-12 gap-4 items-center py-1">
-                <div className="col-span-6 text-left">
-                  <span className="font-semibold text-foreground">Receita Operacional Bruta</span>
-                </div>
-                <div className="col-span-3 text-right">
-                  <span className="font-bold text-lg text-foreground">{formatCurrency(totalReceitas)}</span>
-                </div>
-                <div className="col-span-3 text-right">
-                  <span className="text-sm font-medium text-muted-foreground bg-primary/10 px-2 py-1 rounded">100%</span>
-                </div>
-              </div>
-
-              {/* Custos Variáveis (Accordion) */}
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="custos-variaveis" className="border-none">
-                  <AccordionTrigger className="w-full hover:no-underline py-1 px-0">
-                    <div className="grid grid-cols-12 gap-4 items-center w-full">
-                      <div className="col-span-6 text-left">
-                        <span className="text-destructive font-semibold">Custos Variáveis</span>
-                      </div>
-                      <div className="col-span-3 text-right">
-                        <span className="font-bold text-lg text-destructive">{formatCurrency(custosVariaveis)}</span>
-                      </div>
-                      <div className="col-span-3 text-right">
-                        <span className="text-sm font-medium text-destructive bg-destructive/10 px-2 py-1 rounded">{percentualCustosVariaveis.toFixed(0)}%</span>
-                      </div>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="pt-1">
-                    <div className="space-y-1 pl-6">
-                      <div className="grid grid-cols-12 gap-4 items-center py-0.5">
-                        <div className="col-span-6 text-left">
-                          <span className="text-sm text-muted-foreground">Custos Operacionais (sem fixas)</span>
-                        </div>
-                        <div className="col-span-3 text-right">
-                          <span className="text-sm font-medium text-muted-foreground">{formatCurrency(custosVariaveis - totalTarifasModalidades)}</span>
-                        </div>
-                        <div className="col-span-3 text-right">
-                          <span className="text-xs text-muted-foreground">{totalReceitas > 0 ? (((custosVariaveis - totalTarifasModalidades) / totalReceitas) * 100).toFixed(0) : '0'}%</span>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-12 gap-4 items-center py-0.5">
-                        <div className="col-span-6 text-left">
-                          <span className="text-sm text-muted-foreground">Taxas Modalidades</span>
-                        </div>
-                        <div className="col-span-3 text-right">
-                          <span className="text-sm font-medium text-muted-foreground">{formatCurrency(totalTarifasModalidades)}</span>
-                        </div>
-                        <div className="col-span-3 text-right">
-                          <span className="text-xs text-muted-foreground">{totalReceitas > 0 ? ((totalTarifasModalidades / totalReceitas) * 100).toFixed(0) : '0'}%</span>
-                        </div>
-                      </div>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-
-              <div className="border-t border-border/30 my-2"></div>
-
-              {/* Margem de Contribuição */}
-              <div className="grid grid-cols-12 gap-4 items-center py-1">
-                <div className="col-span-6 text-left">
-                  <span className="font-semibold text-foreground">Margem de Contribuição</span>
-                </div>
-                <div className="col-span-3 text-right">
-                  <span className="font-bold text-lg text-foreground">{formatCurrency(margemContribuicao)}</span>
-                </div>
-                <div className="col-span-3 text-right">
-                  <span className="text-sm font-medium text-success bg-success/10 px-2 py-1 rounded">{percentualMargemContribuicao.toFixed(0)}%</span>
-                </div>
-              </div>
-
-              {/* Despesa Fixa */}
-              <div className="grid grid-cols-12 gap-4 items-center py-1">
-                <div className="col-span-6 text-left">
-                  <span className="text-destructive font-semibold">Despesa Fixa</span>
-                </div>
-                <div className="col-span-3 text-right">
-                  <span className="font-bold text-lg text-destructive">{formatCurrency(despesasFixas)}</span>
-                </div>
-                <div className="col-span-3 text-right">
-                  <span className="text-sm font-medium text-destructive bg-destructive/10 px-2 py-1 rounded">{percentualDespesasFixas.toFixed(0)}%</span>
-                </div>
-              </div>
-
-              <div className="border-t border-border/30 my-2"></div>
-
-              {/* Lucro Operacional */}
-              <div className="grid grid-cols-12 gap-4 items-center py-1">
-                <div className="col-span-6 text-left">
-                  <span className="font-semibold text-foreground">Lucro Operacional</span>
-                </div>
-                <div className="col-span-3 text-right">
-                  <span className={`font-bold text-lg ${getNumberColor(lucroOperacional)}`}>{formatCurrency(lucroOperacional)}</span>
-                </div>
-                <div className="col-span-3 text-right">
-                  <span className={`text-sm font-medium px-2 py-1 rounded ${lucroOperacional < 0 ? 'text-destructive bg-destructive/10' : 'text-success bg-success/10'}`}>
-                    {percentualLucroOperacional.toFixed(0)}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Investimentos (Accordion) */}
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="investimentos" className="border-none">
-                  <AccordionTrigger className="w-full hover:no-underline py-1 px-0">
-                    <div className="grid grid-cols-12 gap-4 items-center w-full">
-                      <div className="col-span-6 text-left">
-                        <span className="text-destructive font-semibold">Investimentos</span>
-                      </div>
-                      <div className="col-span-3 text-right">
-                        <span className="font-bold text-lg text-destructive">{formatCurrency(investimentos)}</span>
-                      </div>
-                      <div className="col-span-3 text-right">
-                        <span className="text-sm font-medium text-destructive bg-destructive/10 px-2 py-1 rounded">
-                          {percentualInvestimentos.toFixed(0)}%
-                        </span>
-                      </div>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="pt-1">
-                    <div className="space-y-1 pl-6">
-                      <div className="grid grid-cols-12 gap-4 items-center py-0.5">
-                        <div className="col-span-6 text-left">
-                          <span className="text-sm text-muted-foreground">Outros Investimentos</span>
-                        </div>
-                        <div className="col-span-3 text-right">
-                          <span className="text-sm font-medium text-muted-foreground">{formatCurrency(investimentosDespesas)}</span>
-                        </div>
-                        <div className="col-span-3 text-right">
-                          <span className="text-xs text-muted-foreground">
-                            {totalReceitas > 0 ? ((investimentosDespesas / totalReceitas) * 100).toFixed(0) : 0}%
-                          </span>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-12 gap-4 items-center py-0.5">
-                        <div className="col-span-6 text-left">
-                          <span className="text-sm text-muted-foreground">Ifood Voucher</span>
-                        </div>
-                        <div className="col-span-3 text-right">
-                          <span className="text-sm font-medium text-muted-foreground">{formatCurrency(investimentosReceitas)}</span>
-                        </div>
-                        <div className="col-span-3 text-right">
-                          <span className="text-xs text-muted-foreground">
-                            {totalReceitas > 0 ? ((investimentosReceitas / totalReceitas) * 100).toFixed(0) : 0}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-
-              <div className="border-t-2 border-border my-2"></div>
-
-              {/* Resultado Líquido */}
-              <div className="grid grid-cols-12 gap-4 items-center py-2 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg px-4">
-                <div className="col-span-6 text-left">
-                  <span className="font-bold text-lg text-foreground">Resultado Líquido</span>
-                </div>
-                <div className="col-span-3 text-right">
-                  <span className={`font-bold text-xl ${getNumberColor(resultadoLiquido)}`}>
-                    {formatCurrency(resultadoLiquido)}
-                  </span>
-                </div>
-                <div className="col-span-3 text-right">
-                  <span className={`text-sm font-bold px-3 py-1 rounded-full ${resultadoLiquido < 0 ? 'text-destructive bg-destructive/20' : 'text-success bg-success/20'}`}>
-                    {formatPercent(resultadoLiquido, totalReceitas)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5" />
-              Ponto de Equilíbrio
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Meta Mensal</span>
-                <div className="font-bold text-lg">{formatCurrency(pontoEquilibrio)}</div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span>Diferença para Meta</span>
-                <div className="text-right">
-                  <div className={`font-bold ${getNumberColor(diferencaMeta)}`}>
-                    {formatCurrency(diferencaMeta)}
-                  </div>
-                  <Badge variant={diferencaMeta < 0 ? "destructive" : "default"} className="text-xs mt-1">
-                    {diferencaMeta < 0 ? "Abaixo da meta" : "Acima da meta"}
-                  </Badge>
-                </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span>Dias Úteis Restantes</span>
-                <div className="font-bold">{diasUteis} dias</div>
-              </div>
-              <div className="flex justify-between items-center border-t pt-3">
-                <span className="font-medium">Faturamento Mínimo Diário</span>
-                <div className="text-right">
-                  <div className="font-bold text-lg">{formatCurrency(fatMinimoDiario)}</div>
-                  <div className="text-xs text-muted-foreground">Para atingir o equilíbrio</div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
+      {/* DRE estilizado */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calculator className="h-5 w-5" />
-            Resumo de Contas
+          <CardTitle className="text-lg font-bold flex gap-2 items-center">
+            <BarChart3 className="h-5 w-5" /> Demonstrativo de Resultado
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
-              <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{contasVencendoHoje}</div>
-              <div className="text-sm text-muted-foreground">Contas Vencendo Hoje</div>
+        <CardContent className="space-y-3 text-sm">
+          <div className="grid grid-cols-12 gap-4 border-b pb-2">
+            <div className="col-span-6 font-semibold">Receita Operacional Bruta</div>
+            <div className="col-span-3 text-right font-bold">{formatCurrency(totalReceitas)}</div>
+            <div className="col-span-3 text-right text-muted-foreground">100%</div>
+          </div>
+
+          <Accordion type="single" collapsible>
+            <AccordionItem value="custos">
+              <AccordionTrigger className="text-red-600 font-semibold">
+                Custos Variáveis
+              </AccordionTrigger>
+              <AccordionContent className="pl-4 space-y-1">
+                <div className="grid grid-cols-12 gap-4 text-muted-foreground">
+                  <div className="col-span-6">Custos Operacionais (sem fixas)</div>
+                  <div className="col-span-3 text-right">{formatCurrency(custosOperacionais)}</div>
+                  <div className="col-span-3 text-right">{formatPercent(custosOperacionais, totalReceitas)}</div>
+                </div>
+                <div className="grid grid-cols-12 gap-4 text-muted-foreground">
+                  <div className="col-span-6">Taxas Modalidades</div>
+                  <div className="col-span-3 text-right">{formatCurrency(totalTarifasModalidades)}</div>
+                  <div className="col-span-3 text-right">{formatPercent(totalTarifasModalidades, totalReceitas)}</div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+
+          <div className="grid grid-cols-12 gap-4 border-t pt-2">
+            <div className="col-span-6 text-green-600 font-semibold">Margem de Contribuição</div>
+            <div className="col-span-3 text-right font-bold text-green-600">{formatCurrency(margemContribuicao)}</div>
+            <div className="col-span-3 text-right text-green-600">{formatPercent(margemContribuicao, totalReceitas)}</div>
+          </div>
+
+          <div className="grid grid-cols-12 gap-4">
+            <div className="col-span-6 text-destructive font-semibold">Despesa Fixa</div>
+            <div className="col-span-3 text-right font-bold text-destructive">{formatCurrency(despesasFixas)}</div>
+            <div className="col-span-3 text-right text-destructive">{formatPercent(despesasFixas, totalReceitas)}</div>
+          </div>
+
+          <div className="grid grid-cols-12 gap-4">
+            <div className="col-span-6 text-green-600 font-semibold">Lucro Operacional</div>
+            <div className="col-span-3 text-right font-bold text-green-600">{formatCurrency(lucroOperacional)}</div>
+            <div className="col-span-3 text-right text-green-600">{formatPercent(lucroOperacional, totalReceitas)}</div>
+          </div>
+
+          <Accordion type="single" collapsible>
+            <AccordionItem value="investimentos">
+              <AccordionTrigger className="text-destructive font-semibold">
+                Investimentos
+              </AccordionTrigger>
+              <AccordionContent className="pl-4 space-y-1">
+                <div className="grid grid-cols-12 gap-4 text-muted-foreground">
+                  <div className="col-span-6">Outros Investimentos</div>
+                  <div className="col-span-3 text-right">{formatCurrency(outrosInvestimentos)}</div>
+                  <div className="col-span-3 text-right">{formatPercent(outrosInvestimentos, totalReceitas)}</div>
+                </div>
+                <div className="grid grid-cols-12 gap-4 text-muted-foreground">
+                  <div className="col-span-6">Ifood Voucher</div>
+                  <div className="col-span-3 text-right">{formatCurrency(investimentosIfood)}</div>
+                  <div className="col-span-3 text-right">{formatPercent(investimentosIfood, totalReceitas)}</div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+
+          <div className="bg-muted/10 p-4 rounded-lg mt-4 grid grid-cols-12 gap-4 items-center">
+            <div className="col-span-6 font-bold text-green-700 text-lg">Resultado Líquido</div>
+            <div className="col-span-3 text-right text-lg font-bold text-green-700">
+              {formatCurrency(resultadoLiquido)}
             </div>
-            <div className="text-center p-4 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(aReceberProximos7Dias)}</div>
-              <div className="text-sm text-muted-foreground">A Receber (Próximos 7 dias)</div>
-            </div>
-            <div className="text-center p-4 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{formatCurrency(aPagarProximos7Dias)}</div>
-              <div className="text-sm text-muted-foreground">A Pagar (Próximos 7 dias)</div>
+            <div className="col-span-3 text-right font-semibold text-green-700">
+              {formatPercent(resultadoLiquido, totalReceitas)}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="mt-6">
+      {/* Ponto de Equilíbrio */}
+      <Card>
         <CardHeader>
-          <CardTitle>Movimentações Não Operacionais</CardTitle>
+          <CardTitle className="text-lg font-bold flex gap-2 items-center">
+            <Target className="h-5 w-5" /> Ponto de Equilíbrio
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center">
-            <span className="flex-1 text-left">Receita Não Operacional</span>
-            <span className="font-bold text-right min-w-[140px] text-lg">{formatCurrency(receitaNaoOperacional)}</span>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm">Meta Mensal</span>
+              <span className="font-semibold">{formatCurrency(10000)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm">Diferença para Meta</span>
+              <div className="text-right">
+                <span className="font-semibold text-green-600">{formatCurrency(diferencaMeta)}</span>
+                <Badge variant="secondary" className="ml-2">Acima da meta</Badge>
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm">Dias Úteis Restantes</span>
+              <span className="font-semibold">{diasUteis} dias</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm">Faturamento Mínimo Diário</span>
+              <div className="text-right">
+                <span className="font-semibold">{formatCurrency(fatMinimoDiario)}</span>
+                <p className="text-xs text-muted-foreground">Para atingir o equilíbrio</p>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center">
-            <span className="flex-1 text-left">Despesa Não Operacional</span>
-            <span className="font-bold text-right min-w-[140px] text-lg text-destructive">{formatCurrency(despesaNaoOperacional)}</span>
+        </CardContent>
+      </Card>
+
+      {/* Resumo de Contas */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="bg-yellow-50 border-yellow-200 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-yellow-600">{contasVencendoHoje}</div>
+              <div className="text-sm text-muted-foreground">Contas Vencendo Hoje</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-green-50 border-green-200 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{formatCurrency(aReceberProximos7Dias)}</div>
+              <div className="text-sm text-muted-foreground">A Receber (Próximos 7 dias)</div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-purple-50 border-purple-200 hover:shadow-lg transition-shadow">
+          <CardContent className="p-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600">{formatCurrency(aPagarProximos7Dias)}</div>
+              <div className="text-sm text-muted-foreground">A Pagar (Próximos 7 dias)</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Movimentações Não Operacionais */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg font-bold flex gap-2 items-center">
+            <Receipt className="h-5 w-5" /> Movimentações Não Operacionais
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center py-2">
+              <span className="text-sm font-medium">Receita Não Operacional</span>
+              <div className="text-right min-w-[120px]">
+                <div className="font-semibold">{formatCurrency(receitaNaoOperacional)}</div>
+                <div className="text-xs text-muted-foreground">{totalReceitas > 0 ? Math.round((receitaNaoOperacional / totalReceitas) * 100) : 0}%</div>
+              </div>
+            </div>
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-sm font-medium text-red-600">Despesa Não Operacional</span>
+              <div className="text-right min-w-[120px]">
+                <div className="font-semibold text-red-600">{formatCurrency(despesaNaoOperacional)}</div>
+                <div className="text-xs text-muted-foreground">{totalReceitas > 0 ? Math.round((despesaNaoOperacional / totalReceitas) * 100) : 0}%</div>
+              </div>
+            </div>
+            <div className="flex justify-between items-center py-3 border-t-2 border-gray-200 bg-gray-50 rounded-lg px-3">
+              <span className="text-sm font-bold text-green-600">Resultado Não Operacional</span>
+              <div className="text-right min-w-[120px]">
+                <div className="font-bold text-green-600">{formatCurrency(resultadoNaoOperacional)}</div>
+                <div className="text-xs text-muted-foreground">{totalReceitas > 0 ? Math.round((resultadoNaoOperacional / totalReceitas) * 100) : 0}%</div>
+              </div>
+            </div>
           </div>
-          <hr className="my-2 border-t" />
-          <div className="flex items-center">
-            <span className="font-medium flex-1 text-left">Resultado Não Operacional</span>
-            <span className={`font-bold text-right min-w-[140px] text-lg ${getNumberColor(resultadoNaoOperacional)}`}>{formatCurrency(resultadoNaoOperacional)}</span>
-          </div>
-          <div className="flex items-center bg-muted/30 p-3 rounded-lg mt-2">
-            <span className="font-bold flex-1 text-lg">Resultado Geral Líquido</span>
-            <span className={`font-bold text-xl text-right min-w-[140px] ${getNumberColor(resultadoGeralLiquido)}`}>{formatCurrency(resultadoGeralLiquido)}</span>
-          </div>
+        </CardContent>
+      </Card>
+
+      {/* Gráfico de Faturamento Diário */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg font-bold flex gap-2 items-center">
+            <BarChart3 className="h-5 w-5" /> Análise de Faturamento Diário
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <FaturamentoChart receitas={receitas || []} selectedMonth={selectedMonth} />
         </CardContent>
       </Card>
     </div>
