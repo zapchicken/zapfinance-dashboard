@@ -386,6 +386,12 @@ export default function ContasReceber() {
   };
 
   const { primeiroDia, ultimoDia } = useMemo(() => {
+    if (mesSelecionado === 'todos') {
+      return { 
+        primeiroDia: new Date(2020, 0, 1), // Data muito antiga
+        ultimoDia: new Date(2030, 11, 31)   // Data muito futura
+      };
+    }
     const [ano, mes] = mesSelecionado.split('-').map(Number);
     return { 
         primeiroDia: new Date(ano, mes - 1, 1), 
@@ -395,7 +401,16 @@ export default function ContasReceber() {
 
   const contasFiltradas = useMemo(() => {
     if (!contas) return [];
-    return contas
+    
+    console.log('🔍 Debug filtro:', {
+      totalContas: contas.length,
+      mesSelecionado,
+      primeiroDia: primeiroDia.toISOString(),
+      ultimoDia: ultimoDia.toISOString(),
+      searchTerm
+    });
+    
+    const filtradas = contas
       .filter(conta => {
         const searchLower = searchTerm.toLowerCase();
         const matchesSearch = !searchTerm || 
@@ -416,6 +431,9 @@ export default function ContasReceber() {
         if (!b.data_vencimento) return -1;
         return b.data_vencimento.localeCompare(a.data_vencimento);
       });
+    
+    console.log('✅ Contas filtradas:', filtradas.length);
+    return filtradas;
   }, [contas, searchTerm, mesSelecionado, primeiroDia, ultimoDia]);
 
   // Cards de resumo
@@ -747,11 +765,13 @@ export default function ContasReceber() {
               />
             </div>
             <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Mês:</span>
               <select
                 value={mesSelecionado}
                 onChange={(e) => setMesSelecionado(e.target.value)}
                 className="text-sm text-muted-foreground bg-transparent border-none focus:outline-none"
               >
+                <option value="todos">Todas as receitas</option>
                 {Array.from({ length: 12 }, (_, i) => {
                   const data = new Date(new Date().getFullYear(), i, 1);
                   const valor = `${new Date().getFullYear()}-${String(i + 1).padStart(2, '0')}`;
