@@ -66,6 +66,11 @@ export default function FluxoCaixa() {
       console.log('Saídas carregadas:', saidasData);
       console.log('Saídas filtradas (com data_pagamento):', saidasFiltradas);
       console.log('Filtros aplicados:', { dataInicialStr, dataFinalStr });
+      
+      // Debug dos bancos
+      console.log('Bancos carregados:', bancosData);
+      console.log('Bancos com saldo inicial:', bancosData?.map(b => ({ nome: b.nome, saldo_inicial: b.saldo_inicial, saldo_atual: b.saldo_atual })));
+      
       setLoading(false);
     };
     fetchAll();
@@ -73,18 +78,35 @@ export default function FluxoCaixa() {
 
   // Montar movimentações agrupadas por banco
   const bancosComResumo = useMemo(() => {
-    return bancos.map(banco => {
+    const resultado = bancos.map(banco => {
       const entradasBanco = entradas.filter(e => e.banco_id === banco.id);
       const saidasBanco = saidas.filter(s => s.banco_id === banco.id);
       const totalEntradas = entradasBanco.reduce((sum, e) => sum + (e.valor_liquido || e.valor || 0), 0);
       const totalSaidas = saidasBanco.reduce((sum, s) => sum + (s.valor || 0), 0);
+      
+      // Calcular saldo atualizado: saldo inicial + entradas - saídas
+      const saldoAtualizado = (banco.saldo_inicial || 0) + totalEntradas - totalSaidas;
+      
+      // Debug para cada banco
+      console.log(`Banco ${banco.nome}:`, {
+        saldo_inicial: banco.saldo_inicial,
+        totalEntradas,
+        totalSaidas,
+        saldo_calculado: saldoAtualizado,
+        entradas_count: entradasBanco.length,
+        saidas_count: saidasBanco.length
+      });
+      
       return {
         ...banco,
         totalEntradas,
         totalSaidas,
-        saldo: banco.saldo_atual
+        saldo: saldoAtualizado
       };
     });
+    
+    console.log('Bancos com resumo calculado:', resultado);
+    return resultado;
   }, [bancos, entradas, saidas]);
 
   const formatCurrency = (value: number) => {
