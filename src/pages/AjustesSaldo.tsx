@@ -88,6 +88,12 @@ export default function AjustesSaldo() {
       }
       
       console.log('✅ Bancos carregados:', bancosData);
+      console.log('💰 Saldos dos bancos:', bancosData?.map(b => ({
+        nome: b.nome,
+        saldo_atual: b.saldo_atual,
+        saldo_inicial: b.saldo_inicial
+      })));
+      console.log('📊 Dados completos dos bancos:', JSON.stringify(bancosData, null, 2));
       setBancos(bancosData || []);
 
       // Buscar ajustes
