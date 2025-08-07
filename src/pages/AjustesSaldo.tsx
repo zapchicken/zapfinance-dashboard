@@ -44,6 +44,8 @@ interface AjusteSaldo {
 }
 
 export default function AjustesSaldo() {
+  console.log('🔄 Componente AjustesSaldo renderizado');
+  
   const [bancos, setBancos] = useState<Banco[]>([]);
   const [ajustes, setAjustes] = useState<AjusteSaldo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,32 +61,56 @@ export default function AjustesSaldo() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!user) return;
+    console.log('🔄 useEffect executado, user:', user);
+    if (!user) {
+      console.log('❌ Usuário não autenticado');
+      return;
+    }
+    console.log('✅ Usuário autenticado, chamando fetchData');
     fetchData();
   }, [user]);
 
   const fetchData = async () => {
+    console.log('🔄 Iniciando fetchData...');
     setLoading(true);
     try {
       // Buscar bancos
-      const { data: bancosData } = await supabase
+      console.log('📊 Buscando bancos...');
+      const { data: bancosData, error: bancosError } = await supabase
         .from('bancos')
         .select('*')
         .eq('ativo', true)
         .order('nome');
+      
+      if (bancosError) {
+        console.error('❌ Erro ao buscar bancos:', bancosError);
+        throw bancosError;
+      }
+      
+      console.log('✅ Bancos carregados:', bancosData);
       setBancos(bancosData || []);
 
       // Buscar ajustes
-      const { data: ajustesData } = await supabase
+      console.log('📊 Buscando ajustes...');
+      const { data: ajustesData, error: ajustesError } = await supabase
         .from('ajustes_saldo')
         .select(`
           *,
           banco: bancos(nome)
         `)
         .order('data_ajuste', { ascending: false });
+      
+      if (ajustesError) {
+        console.error('❌ Erro ao buscar ajustes:', ajustesError);
+        throw ajustesError;
+      }
+      
+      console.log('✅ Ajustes carregados:', ajustesData);
       setAjustes(ajustesData || []);
+      
+      console.log('✅ fetchData concluído com sucesso');
     } catch (error) {
-      console.error('Erro ao buscar dados:', error);
+      console.error('❌ Erro ao buscar dados:', error);
       toast({
         title: "Erro",
         description: "Erro ao carregar dados",
