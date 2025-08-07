@@ -84,15 +84,16 @@ export default function FluxoCaixa() {
       const totalEntradas = entradasBanco.reduce((sum, e) => sum + (e.valor_liquido || e.valor || 0), 0);
       const totalSaidas = saidasBanco.reduce((sum, s) => sum + (s.valor || 0), 0);
       
-      // Calcular saldo atualizado: saldo inicial + entradas - saídas
-      const saldoAtualizado = (banco.saldo_inicial || 0) + totalEntradas - totalSaidas;
+      // Usar o saldo atual do banco (que já inclui todos os ajustes e movimentações)
+      const saldoAtualizado = banco.saldo_atual || 0;
       
       // Debug para cada banco
       console.log(`Banco ${banco.nome}:`, {
+        saldo_atual: banco.saldo_atual,
         saldo_inicial: banco.saldo_inicial,
-        totalEntradas,
-        totalSaidas,
-        saldo_calculado: saldoAtualizado,
+        totalEntradas_periodo: totalEntradas,
+        totalSaidas_periodo: totalSaidas,
+        saldo_final: saldoAtualizado,
         entradas_count: entradasBanco.length,
         saidas_count: saidasBanco.length
       });
