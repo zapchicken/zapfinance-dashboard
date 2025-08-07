@@ -17,6 +17,8 @@ export default function Relatorios() {
   const [dados, setDados] = useState<any>(null);
   const [relatorioComparativo, setRelatorioComparativo] = useState<any>(null);
   const [mesesComparacao, setMesesComparacao] = useState(6); // Últimos 6 meses
+  const [detalhamento, setDetalhamento] = useState<any>(null);
+  const [top5, setTop5] = useState<any>(null);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -53,6 +55,12 @@ export default function Relatorios() {
       
       // Gerar relatório comparativo
       gerarRelatorioComparativo(receitas || [], despesas || [], categorias || []);
+      
+      // Gerar detalhamento
+      gerarDetalhamento(receitas || [], despesas || [], categorias || []);
+      
+      // Gerar Top 5
+      gerarTop5(receitas || [], despesas || [], categorias || []);
     } catch (error) {
       console.error('Erro ao buscar dados:', error);
       toast({
@@ -176,6 +184,149 @@ export default function Relatorios() {
     setRelatorioComparativo(dadosMensais);
   };
 
+  const gerarDetalhamento = (receitas: any[], despesas: any[], categorias: any[]) => {
+    const hoje = new Date();
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+
+    // Filtrar dados do mês atual
+    const receitasMes = receitas.filter(r => {
+      const dataVenc = new Date(r.data_vencimento);
+      return dataVenc >= inicioMes && dataVenc <= fimMes;
+    });
+
+    const despesasMes = despesas.filter(d => {
+      const dataVenc = new Date(d.data_vencimento);
+      return dataVenc >= inicioMes && dataVenc <= fimMes;
+    });
+
+    // 1. FATURAMENTO - Agrupar por modalidade/descrição
+    const faturamentoPorModalidade = receitasMes.reduce((acc: any, receita) => {
+      const modalidade = receita.descricao || 'Outros';
+      if (!acc[modalidade]) {
+        acc[modalidade] = 0;
+      }
+      acc[modalidade] += receita.valor || 0;
+      return acc;
+    }, {});
+
+    const faturamentoTotal = Object.values(faturamentoPorModalidade).reduce((sum: any, valor: any) => sum + valor, 0);
+    
+    const faturamentoDetalhado = Object.entries(faturamentoPorModalidade)
+      .map(([modalidade, valor]: [string, any]) => ({
+        categoria: modalidade,
+        valor: valor,
+        percentual: faturamentoTotal > 0 ? (valor / faturamentoTotal) * 100 : 0
+      }))
+      .sort((a, b) => b.valor - a.valor);
+
+    // 2. CUSTO VARIÁVEL - Agrupar por categoria
+    const categoriasFixasIds = categorias.filter(c => c.tipo === 'despesa' && c.nome.toLowerCase().includes('fixa')).map(c => c.id);
+    const categoriasInvestimentoIds = categorias.filter(c => c.tipo === 'despesa' && c.nome.toLowerCase().includes('investimento')).map(c => c.id);
+    
+    const custoVariavelPorCategoria = despesasMes
+      .filter(d => !categoriasFixasIds.includes(d.categoria_id) && !categoriasInvestimentoIds.includes(d.categoria_id))
+      .reduce((acc: any, despesa) => {
+        const categoria = categorias.find(c => c.id === despesa.categoria_id)?.nome || 'Outros';
+        if (!acc[categoria]) {
+          acc[categoria] = 0;
+        }
+        acc[categoria] += despesa.valor || 0;
+        return acc;
+      }, {});
+
+    const custoVariavelTotal = Object.values(custoVariavelPorCategoria).reduce((sum: any, valor: any) => sum + valor, 0);
+    
+    const custoVariavelDetalhado = Object.entries(custoVariavelPorCategoria)
+      .map(([categoria, valor]: [string, any]) => ({
+        categoria: categoria,
+        valor: valor,
+        variacao: 0 // Placeholder para variação
+      }))
+      .sort((a, b) => b.valor - a.valor);
+
+    // 3. SOMA DE TAXA - Calcular taxas das receitas
+    const taxasPorModalidade = receitasMes.reduce((acc: any, receita) => {
+      const modalidade = receita.descricao || 'Outros';
+      if (!acc[modalidade]) {
+        acc[modalidade] = 0;
+      }
+      acc[modalidade] += receita.valor_taxa || 0;
+      return acc;
+    }, {});
+
+    const taxaTotal = Object.values(taxasPorModalidade).reduce((sum: any, valor: any) => sum + valor, 0);
+    
+    const taxasDetalhado = Object.entries(taxasPorModalidade)
+      .map(([modalidade, valor]: [string, any]) => ({
+        categoria: modalidade,
+        valor: valor
+      }))
+      .sort((a, b) => b.valor - a.valor);
+
+    setDetalhamento({
+      faturamento: {
+        items: faturamentoDetalhado,
+        total: faturamentoTotal
+      },
+      custoVariavel: {
+        items: custoVariavelDetalhado,
+        total: custoVariavelTotal
+      },
+      taxas: {
+        items: taxasDetalhado,
+        total: taxaTotal
+      }
+    });
+  };
+
+  const gerarTop5 = (receitas: any[], despesas: any[], categorias: any[]) => {
+    const hoje = new Date();
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+
+    // Filtrar dados do mês atual
+    const receitasMes = receitas.filter(r => {
+      const dataVenc = new Date(r.data_vencimento);
+      return dataVenc >= inicioMes && dataVenc <= fimMes;
+    });
+
+    const despesasMes = despesas.filter(d => {
+      const dataVenc = new Date(d.data_vencimento);
+      return dataVenc >= inicioMes && dataVenc <= fimMes;
+    });
+
+    // Top 5 Receitas
+    const top5Receitas = receitasMes
+      .sort((a, b) => (b.valor || 0) - (a.valor || 0))
+      .slice(0, 5)
+      .map((receita, index) => ({
+        posicao: index + 1,
+        descricao: receita.descricao || 'Sem descrição',
+        valor: receita.valor || 0,
+        data: receita.data_vencimento,
+        tipo: 'receita'
+      }));
+
+    // Top 5 Despesas
+    const top5Despesas = despesasMes
+      .sort((a, b) => (b.valor || 0) - (a.valor || 0))
+      .slice(0, 5)
+      .map((despesa, index) => ({
+        posicao: index + 1,
+        descricao: despesa.descricao || 'Sem descrição',
+        valor: despesa.valor || 0,
+        data: despesa.data_vencimento,
+        categoria: categorias.find(c => c.id === despesa.categoria_id)?.nome || 'Sem categoria',
+        tipo: 'despesa'
+      }));
+
+    setTop5({
+      receitas: top5Receitas,
+      despesas: top5Despesas
+    });
+  };
+
   const calcularDadosRelatorio = () => {
     if (!dados) return null;
 
@@ -274,6 +425,114 @@ export default function Relatorios() {
       setLoading(false);
     }
   }
+
+  const exportarDetalhamento = () => {
+    if (!detalhamento) {
+      toast({
+        title: "Aviso",
+        description: "Não há dados para exportar",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const workbook = XLSX.utils.book_new();
+    
+    // Planilha 1: Faturamento
+    const faturamentoData = detalhamento.faturamento.items.map((item: any) => ({
+      'Modalidade': item.categoria,
+      'Valor': item.valor,
+      '%Part': item.percentual.toFixed(1) + '%'
+    }));
+    faturamentoData.push({
+      'Modalidade': 'FATURAMENTO TOTAL',
+      'Valor': detalhamento.faturamento.total,
+      '%Part': '100%'
+    });
+    
+    const faturamentoSheet = XLSX.utils.json_to_sheet(faturamentoData);
+    XLSX.utils.book_append_sheet(workbook, faturamentoSheet, 'Faturamento');
+
+    // Planilha 2: Custo Variável
+    const custoVariavelData = detalhamento.custoVariavel.items.map((item: any) => ({
+      'Categoria': item.categoria,
+      'Valor': item.valor,
+      'Variação': item.variacao
+    }));
+    custoVariavelData.push({
+      'Categoria': 'CUSTO VARIÁVEL TOTAL',
+      'Valor': detalhamento.custoVariavel.total,
+      'Variação': ''
+    });
+    
+    const custoVariavelSheet = XLSX.utils.json_to_sheet(custoVariavelData);
+    XLSX.utils.book_append_sheet(workbook, custoVariavelSheet, 'Custo Variável');
+
+    // Planilha 3: Taxas
+    const taxasData = detalhamento.taxas.items.map((item: any) => ({
+      'Modalidade': item.categoria,
+      'Total': item.valor
+    }));
+    taxasData.push({
+      'Modalidade': 'TOTAL TAXAS',
+      'Total': detalhamento.taxas.total
+    });
+    
+    const taxasSheet = XLSX.utils.json_to_sheet(taxasData);
+    XLSX.utils.book_append_sheet(workbook, taxasSheet, 'Taxas');
+    
+    // Salvar arquivo
+    XLSX.writeFile(workbook, `detalhamento_${new Date().toISOString().split('T')[0]}.xlsx`);
+    
+    toast({
+      title: "Sucesso",
+      description: "Detalhamento exportado com sucesso!",
+    });
+  };
+
+  const exportarTop5 = () => {
+    if (!top5) {
+      toast({
+        title: "Aviso",
+        description: "Não há dados para exportar",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const workbook = XLSX.utils.book_new();
+    
+    // Planilha 1: Top 5 Receitas
+    const top5ReceitasData = top5.receitas.map((item: any) => ({
+      'Posição': item.posicao,
+      'Descrição': item.descricao,
+      'Valor': item.valor,
+      'Data': item.data
+    }));
+    
+    const top5ReceitasSheet = XLSX.utils.json_to_sheet(top5ReceitasData);
+    XLSX.utils.book_append_sheet(workbook, top5ReceitasSheet, 'Top 5 Receitas');
+
+    // Planilha 2: Top 5 Despesas
+    const top5DespesasData = top5.despesas.map((item: any) => ({
+      'Posição': item.posicao,
+      'Descrição': item.descricao,
+      'Valor': item.valor,
+      'Categoria': item.categoria,
+      'Data': item.data
+    }));
+    
+    const top5DespesasSheet = XLSX.utils.json_to_sheet(top5DespesasData);
+    XLSX.utils.book_append_sheet(workbook, top5DespesasSheet, 'Top 5 Despesas');
+    
+    // Salvar arquivo
+    XLSX.writeFile(workbook, `top5_${new Date().toISOString().split('T')[0]}.xlsx`);
+    
+    toast({
+      title: "Sucesso",
+      description: "Top 5 exportado com sucesso!",
+    });
+  };
 
   const exportarRelatorioComparativo = () => {
     if (!relatorioComparativo || relatorioComparativo.length === 0) {
@@ -964,6 +1223,213 @@ export default function Relatorios() {
                 </>
               )}
             </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Detalhamento e Top 5 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Detalhamento */}
+        <Card className="col-span-full">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <FileText className="h-6 w-6 text-primary" />
+                  Detalhamento
+                </CardTitle>
+                <CardDescription>
+                  Análise detalhada de faturamento, custos e taxas
+                </CardDescription>
+              </div>
+              <Button onClick={exportarDetalhamento} variant="outline" className="flex items-center gap-2">
+                <Download className="h-4 w-4" />
+                Exportar Excel
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <span className="ml-2">Carregando dados...</span>
+              </div>
+            ) : detalhamento ? (
+              <div className="space-y-6">
+                {/* Faturamento */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 text-yellow-800 bg-yellow-100 p-2 rounded">Faturamento</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-yellow-200">
+                          <th className="text-left p-2 font-bold text-sm">Faturamento</th>
+                          <th className="text-right p-2 font-bold text-sm">%Part</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detalhamento.faturamento.items.map((item: any, index: number) => (
+                          <tr key={index} className="border-b hover:bg-muted/30">
+                            <td className="p-2 text-sm">{item.categoria}</td>
+                            <td className="p-2 text-right text-sm">{formatCurrency(item.valor)}</td>
+                            <td className="p-2 text-right text-sm">{item.percentual.toFixed(0)}%</td>
+                          </tr>
+                        ))}
+                        <tr className="bg-yellow-100 font-bold">
+                          <td className="p-2 text-sm">FATURAMENTO TOTAL</td>
+                          <td className="p-2 text-right text-sm">{formatCurrency(detalhamento.faturamento.total)}</td>
+                          <td className="p-2 text-right text-sm">100%</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Custo Variável */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 text-blue-800 bg-blue-100 p-2 rounded">Custo Variável</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-blue-200">
+                          <th className="text-left p-2 font-bold text-sm">Soma de Valor</th>
+                          <th className="text-right p-2 font-bold text-sm">Variação</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detalhamento.custoVariavel.items.map((item: any, index: number) => (
+                          <tr key={index} className="border-b hover:bg-muted/30">
+                            <td className="p-2 text-sm">{item.categoria}</td>
+                            <td className="p-2 text-right text-sm">{formatCurrency(item.valor)}</td>
+                            <td className="p-2 text-right text-sm">{item.variacao}</td>
+                          </tr>
+                        ))}
+                        <tr className="bg-blue-100 font-bold">
+                          <td className="p-2 text-sm">CUSTO VARIÁVEL TOTAL</td>
+                          <td className="p-2 text-right text-sm">{formatCurrency(detalhamento.custoVariavel.total)}</td>
+                          <td className="p-2 text-right text-sm"></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Soma de Taxa */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 text-green-800 bg-green-100 p-2 rounded">Soma de Taxa</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-green-200">
+                          <th className="text-left p-2 font-bold text-sm">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detalhamento.taxas.items.map((item: any, index: number) => (
+                          <tr key={index} className="border-b hover:bg-muted/30">
+                            <td className="p-2 text-sm">{item.categoria}</td>
+                            <td className="p-2 text-right text-sm">{formatCurrency(item.valor)}</td>
+                          </tr>
+                        ))}
+                        <tr className="bg-green-100 font-bold">
+                          <td className="p-2 text-sm">TOTAL TAXAS</td>
+                          <td className="p-2 text-right text-sm">{formatCurrency(detalhamento.taxas.total)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                Nenhum dado disponível para o período selecionado
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Top 5 */}
+        <Card className="col-span-full">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <TrendingUp className="h-6 w-6 text-primary" />
+                  Top 5
+                </CardTitle>
+                <CardDescription>
+                  Maiores receitas e despesas do mês
+                </CardDescription>
+              </div>
+              <Button onClick={exportarTop5} variant="outline" className="flex items-center gap-2">
+                <Download className="h-4 w-4" />
+                Exportar Excel
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <span className="ml-2">Carregando dados...</span>
+              </div>
+            ) : top5 ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Top 5 Receitas */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 text-green-800 bg-green-100 p-2 rounded">Top 5 Receitas</h3>
+                  <div className="space-y-2">
+                    {top5.receitas.map((item: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-green-50 rounded-lg border">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-green-200 rounded-full flex items-center justify-center text-green-800 font-bold text-sm">
+                            {item.posicao}
+                          </div>
+                          <div>
+                            <div className="font-medium text-sm">{item.descricao}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {new Date(item.data).toLocaleDateString('pt-BR')}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-green-600">{formatCurrency(item.valor)}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Top 5 Despesas */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 text-red-800 bg-red-100 p-2 rounded">Top 5 Despesas</h3>
+                  <div className="space-y-2">
+                    {top5.despesas.map((item: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-red-50 rounded-lg border">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-red-200 rounded-full flex items-center justify-center text-red-800 font-bold text-sm">
+                            {item.posicao}
+                          </div>
+                          <div>
+                            <div className="font-medium text-sm">{item.descricao}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {item.categoria} • {new Date(item.data).toLocaleDateString('pt-BR')}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-red-600">{formatCurrency(item.valor)}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                Nenhum dado disponível para o período selecionado
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
