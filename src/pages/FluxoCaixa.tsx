@@ -230,7 +230,7 @@ export default function FluxoCaixa() {
 
       {/* Cards de resumo */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="border-l-4 border-l-primary">
+        <Card className="border-l-4 border-l-orange-500">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Saldo Total</CardTitle>
           </CardHeader>
@@ -242,36 +242,36 @@ export default function FluxoCaixa() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-success">
+        <Card className="border-l-4 border-l-green-500">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Total Entradas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-success">
+            <div className="text-2xl font-bold text-green-600">
               {formatCurrency(totalEntradas)}
             </div>
             <p className="text-xs text-muted-foreground">Período selecionado</p>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-accent">
+        <Card className="border-l-4 border-l-red-500">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Total Saídas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-accent">
+            <div className="text-2xl font-bold text-red-600">
               {formatCurrency(totalSaidas)}
             </div>
             <p className="text-xs text-muted-foreground">Período selecionado</p>
           </CardContent>
         </Card>
 
-        <Card className={`border-l-4 ${saldoLiquido >= 0 ? 'border-l-success' : 'border-l-destructive'}`}>
+        <Card className="border-l-4 border-l-red-500">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Saldo Líquido</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${saldoLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>
+            <div className="text-2xl font-bold text-red-600">
               {formatCurrency(saldoLiquido)}
             </div>
             <p className="text-xs text-muted-foreground">Entrada - Saída</p>
@@ -288,15 +288,15 @@ export default function FluxoCaixa() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {bancosComResumo.map((banco) => (
               <div key={banco.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
                 <div>
-                  <div className="font-medium">{banco.nome}</div>
+                  <div className="font-medium text-lg">{banco.nome}</div>
                   <div className="text-sm text-muted-foreground">Saldo atual</div>
                 </div>
                 <div className="text-right">
-                  <div className="font-bold text-lg">{formatCurrency(banco.saldo)}</div>
+                  <div className="font-bold text-xl">{formatCurrency(banco.saldo)}</div>
                 </div>
               </div>
             ))}
