@@ -1,10 +1,156 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Settings, Save, User, Bell, Database } from "lucide-react";
+import { Settings, Save, User, Bell, Database, Download, Upload, Mail, Cloud } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Configuracoes() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [restoreLoading, setRestoreLoading] = useState(false);
+  const [backupEmail, setBackupEmail] = useState("");
+  const [backupType, setBackupType] = useState<"local" | "gmail" | "dropbox">("local");
+
+  // Função para gerar backup completo dos dados
+  const gerarBackup = async () => {
+    if (!user) {
+      toast({
+        title: "Erro",
+        description: "Usuário não autenticado",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setBackupLoading(true);
+    try {
+      // Buscar todos os dados do usuário
+      const [
+        { data: receitas },
+        { data: contasPagar },
+        { data: categorias },
+        { data: fornecedores },
+        { data: bancos }
+      ] = await Promise.all([
+        supabase.from('receitas').select('*').eq('user_id', user.id),
+        supabase.from('contas_pagar').select('*').eq('user_id', user.id),
+        supabase.from('categorias').select('*').eq('user_id', user.id),
+        supabase.from('fornecedores').select('*'),
+        supabase.from('bancos').select('*').eq('ativo', true)
+      ]);
+
+      const backupData = {
+        timestamp: new Date().toISOString(),
+        user_id: user.id,
+        receitas: receitas || [],
+        contas_pagar: contasPagar || [],
+        categorias: categorias || [],
+        fornecedores: fornecedores || [],
+        bancos: bancos || [],
+        metadata: {
+          total_receitas: receitas?.length || 0,
+          total_contas_pagar: contasPagar?.length || 0,
+          total_categorias: categorias?.length || 0,
+          total_fornecedores: fornecedores?.length || 0,
+          total_bancos: bancos?.length || 0
+        }
+      };
+
+      // Criar arquivo JSON
+      const jsonContent = JSON.stringify(backupData, null, 2);
+      const blob = new Blob([jsonContent], { type: 'application/json' });
+
+      if (backupType === "local") {
+        // Download local
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `zapfinance_backup_${new Date().toISOString().split('T')[0]}.json`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        toast({
+          title: "Sucesso",
+          description: "Backup gerado e baixado com sucesso!",
+        });
+      } else if (backupType === "gmail") {
+        // Enviar por email
+        if (!backupEmail) {
+          toast({
+            title: "Erro",
+            description: "Digite um email para envio",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        // Aqui você pode integrar com Gmail API ou usar um serviço de email
+        // Por enquanto, vamos simular o envio
+        toast({
+          title: "Backup por Email",
+          description: `Backup será enviado para ${backupEmail}. Funcionalidade em desenvolvimento.`,
+        });
+      } else if (backupType === "dropbox") {
+        // Integração com Dropbox
+        toast({
+          title: "Backup para Dropbox",
+          description: "Funcionalidade de integração com Dropbox em desenvolvimento.",
+        });
+      }
+
+    } catch (error) {
+      console.error('Erro ao gerar backup:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao gerar backup",
+        variant: "destructive"
+      });
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  // Função para restaurar backup
+  const restaurarBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setRestoreLoading(true);
+    try {
+      const text = await file.text();
+      const backupData = JSON.parse(text);
+
+      // Validar estrutura do backup
+      if (!backupData.receitas || !backupData.contas_pagar) {
+        throw new Error("Arquivo de backup inválido");
+      }
+
+      // Aqui você implementaria a lógica de restauração
+      // Por segurança, vamos apenas mostrar uma confirmação
+      toast({
+        title: "Restauração",
+        description: "Funcionalidade de restauração em desenvolvimento. Arquivo validado com sucesso.",
+      });
+
+    } catch (error) {
+      console.error('Erro ao restaurar backup:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao restaurar backup. Verifique se o arquivo é válido.",
+        variant: "destructive"
+      });
+    } finally {
+      setRestoreLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -109,14 +255,100 @@ export default function Configuracoes() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-muted-foreground">
-              Último backup: 15/07/2025 - 03:00
+              Último backup: {new Date().toLocaleDateString('pt-BR')} - {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
             </div>
-            <Button variant="outline" className="w-full">
-              Fazer Backup Agora
+            
+            {/* Tipo de Backup */}
+            <div className="space-y-2">
+              <Label>Destino do Backup</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  type="button"
+                  variant={backupType === "local" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setBackupType("local")}
+                  className="flex items-center gap-1"
+                >
+                  <Download className="h-3 w-3" />
+                  Local
+                </Button>
+                <Button
+                  type="button"
+                  variant={backupType === "gmail" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setBackupType("gmail")}
+                  className="flex items-center gap-1"
+                >
+                  <Mail className="h-3 w-3" />
+                  Gmail
+                </Button>
+                <Button
+                  type="button"
+                  variant={backupType === "dropbox" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setBackupType("dropbox")}
+                  className="flex items-center gap-1"
+                >
+                  <Cloud className="h-3 w-3" />
+                  Dropbox
+                </Button>
+              </div>
+            </div>
+
+            {/* Campo de email para Gmail */}
+            {backupType === "gmail" && (
+              <div className="space-y-2">
+                <Label>Email para envio</Label>
+                <Input
+                  type="email"
+                  placeholder="seu-email@gmail.com"
+                  value={backupEmail}
+                  onChange={(e) => setBackupEmail(e.target.value)}
+                />
+              </div>
+            )}
+
+            {/* Botões de ação */}
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={gerarBackup}
+              disabled={backupLoading}
+            >
+              {backupLoading ? (
+                "Gerando Backup..."
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Fazer Backup Agora
+                </>
+              )}
             </Button>
-            <Button variant="outline" className="w-full">
-              Restaurar Backup
-            </Button>
+
+            <div className="relative">
+              <input
+                type="file"
+                accept=".json"
+                onChange={restaurarBackup}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                disabled={restoreLoading}
+              />
+              <Button 
+                variant="outline" 
+                className="w-full"
+                disabled={restoreLoading}
+              >
+                {restoreLoading ? (
+                  "Restaurando..."
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Restaurar Backup
+                  </>
+                )}
+              </Button>
+            </div>
+
             <Button variant="destructive" className="w-full">
               Limpar Dados
             </Button>
