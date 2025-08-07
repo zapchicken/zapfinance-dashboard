@@ -471,8 +471,27 @@ export default function ContasPagar() {
 
       console.log('Categorias no render:', despesas);
   const contasOrdenadas = [...contasPagar].sort((a, b) => {
-    // Ordenar por data de vencimento (mais antiga primeiro - ordem crescente)
-    // Criar datas sem problemas de fuso horário
+    // Primeiro, ordenar por status: vencido (1), a_vencer (2), pago (3)
+    const statusA = getStatus(a);
+    const statusB = getStatus(b);
+    
+    // Definir prioridade dos status
+    const statusPriority = {
+      'vencido': 1,
+      'a_vencer': 2,
+      'pago': 3,
+      'vence_hoje': 1 // vence_hoje tem a mesma prioridade de vencido
+    };
+    
+    const priorityA = statusPriority[statusA] || 4;
+    const priorityB = statusPriority[statusB] || 4;
+    
+    // Se os status são diferentes, ordenar por prioridade
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+    
+    // Se os status são iguais, ordenar por data de vencimento (menor para maior)
     const [anoA, mesA, diaA] = a.data_vencimento.split('-').map(Number);
     const [anoB, mesB, diaB] = b.data_vencimento.split('-').map(Number);
     const dateA = new Date(anoA, mesA - 1, diaA, 12, 0, 0);
