@@ -98,7 +98,7 @@ export default function AjustesSaldo() {
 
       // Buscar ajustes
       console.log('📊 Buscando ajustes...');
-      const { data: ajustesData, error: ajustesError } = await supabase
+      const { data: ajustesData, error: ajustesError } = await (supabase as any)
         .from('ajustes_saldo')
         .select(`
           *,
@@ -112,7 +112,7 @@ export default function AjustesSaldo() {
       }
       
       console.log('✅ Ajustes carregados:', ajustesData);
-      setAjustes(ajustesData || []);
+      setAjustes(ajustesData || [] as any);
       
       console.log('✅ fetchData concluído com sucesso');
     } catch (error) {
@@ -160,7 +160,7 @@ export default function AjustesSaldo() {
     try {
       const diferenca = saldoNovoNum - saldoAtual;
       
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('ajustes_saldo')
         .insert({
           user_id: user?.id,

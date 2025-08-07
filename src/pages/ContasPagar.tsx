@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Filter, Eye, Edit, Trash2, AlertTriangle, Clock, CheckCircle, Check, Download } from "lucide-react";
+import { Plus, Search, Filter, Eye, Edit, Trash2, AlertTriangle, Clock, CheckCircle, Check, Download, Star } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -983,6 +983,10 @@ export default function ContasPagar() {
               <p className="text-sm text-muted-foreground mt-1">
                 {contasFiltradas.length} contas encontradas • Total: {formatCurrency(calcularTotalFiltrado())}
               </p>
+              <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                <Star className="h-3 w-3 text-yellow-500" />
+                <span>Despesa Não Operacional</span>
+              </div>
             </div>
             <Button
               onClick={exportarParaCSV}
@@ -1013,7 +1017,12 @@ export default function ContasPagar() {
                 {contasFiltradas.map((conta) => (
                   <tr key={conta.id} className="border-b hover:bg-muted/50">
                     <td className="p-4 font-medium">
-                      {conta.descricao}
+                      <div className="flex items-center gap-2">
+                        {conta.descricao}
+                        {(conta as any).tipo_despesa === 'nao_operacional' && (
+                          <Star className="h-4 w-4 text-yellow-500" />
+                        )}
+                      </div>
                     </td>
                     <td className="p-4">{despesas.find(cat => cat.id === conta.categoria_id)?.nome || 'Sem categoria'}</td>
                     <td className="p-4">{fornecedores.find(f => f.id === conta.fornecedor_id)?.nome || 'Sem fornecedor'}</td>
@@ -1036,6 +1045,7 @@ export default function ContasPagar() {
                             descricao: despesas.find(cat => cat.id === conta.categoria_id)?.nome || conta.descricao,
                             despesa_id: conta.categoria_id,
                             fornecedor_id: conta.fornecedor_id,
+                            banco_id: (conta as any).banco_id || "",
                             valor: String(conta.valor),
                             data_vencimento: conta.data_vencimento,
                             data_pagamento: conta.data_pagamento || "",

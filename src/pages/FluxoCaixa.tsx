@@ -7,13 +7,30 @@ import { TrendingUp, TrendingDown, Calendar, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
+interface Banco {
+  id: string;
+  nome: string;
+  saldo_inicial: number;
+  saldo_atual: number;
+}
+
+interface AjusteSaldo {
+  id: string;
+  banco_id: string;
+  saldo_anterior: number;
+  saldo_novo: number;
+  diferenca: number;
+  data_ajuste: string;
+}
+
 export default function FluxoCaixa() {
   const [periodoSelecionado, setPeriodoSelecionado] = useState("60");
   const [bancoSelecionado, setBancoSelecionado] = useState("todos");
-  const [bancos, setBancos] = useState<any[]>([]);
+  const [bancos, setBancos] = useState<Banco[]>([]);
   const [movimentacoes, setMovimentacoes] = useState<any[]>([]);
   const [entradas, setEntradas] = useState<any[]>([]);
   const [saidas, setSaidas] = useState<any[]>([]);
+  const [ajustesSaldo, setAjustesSaldo] = useState<AjusteSaldo[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
@@ -60,12 +77,21 @@ export default function FluxoCaixa() {
       const { data: saidasData } = await saidasQuery;
       
       // Filtrar apenas as que têm banco_id (para aparecer no fluxo de caixa)
-      const saidasFiltradas = (saidasData || []).filter(s => s.banco_id);
+      const saidasFiltradas = (saidasData || []).filter((s: any) => s.banco_id);
       setSaidas(saidasFiltradas);
       
       console.log('Saídas carregadas:', saidasData);
       console.log('Saídas filtradas (com data_pagamento):', saidasFiltradas);
       console.log('Filtros aplicados:', { dataInicialStr, dataFinalStr });
+      
+      // Buscar ajustes de saldo usando any para contornar o problema de tipos
+      const { data: ajustesData } = await (supabase as any)
+        .from('ajustes_saldo')
+        .select('*')
+        .order('data_ajuste', { ascending: true });
+      setAjustesSaldo(ajustesData || []);
+      
+      console.log('Ajustes de saldo carregados:', ajustesData);
       
       // Debug dos bancos
       console.log('Bancos carregados:', bancosData);
@@ -79,13 +105,39 @@ export default function FluxoCaixa() {
   // Montar movimentações agrupadas por banco
   const bancosComResumo = useMemo(() => {
     const resultado = bancos.map(banco => {
-      const entradasBanco = entradas.filter(e => e.banco_id === banco.id);
-      const saidasBanco = saidas.filter(s => s.banco_id === banco.id);
+      const entradasBanco = entradas.filter((e: any) => e.banco_id === banco.id);
+      const saidasBanco = saidas.filter((s: any) => s.banco_id === banco.id);
       const totalEntradas = entradasBanco.reduce((sum, e) => sum + (e.valor_liquido || e.valor || 0), 0);
       const totalSaidas = saidasBanco.reduce((sum, s) => sum + (s.valor || 0), 0);
       
-      // Calcular o saldo real baseado no saldo inicial + movimentações do período
-      const saldoReal = (banco.saldo_inicial || 0) + totalEntradas - totalSaidas;
+      // Calcular ajustes de saldo para este banco
+      const ajustesBanco = ajustesSaldo.filter(a => a.banco_id === banco.id);
+      const totalAjustes = ajustesBanco.reduce((sum, a) => sum + a.diferenca, 0);
+      
+      // Calcular o saldo real baseado no saldo inicial + movimentações do período + ajustes de saldo
+      const saldoReal = (banco.saldo_inicial || 0) + totalEntradas - totalSaidas + totalAjustes;
+      
+      // Debug específico para TON I
+      if (banco.nome.includes('TON I') || banco.nome.includes('TONI')) {
+        console.log(`🔍 DEBUG ESPECÍFICO - Banco ${banco.nome}:`, {
+          banco_id: banco.id,
+          saldo_atual_banco: banco.saldo_atual,
+          saldo_inicial: banco.saldo_inicial,
+          totalEntradas_periodo: totalEntradas,
+          totalSaidas_periodo: totalSaidas,
+          totalAjustes: totalAjustes,
+          saldo_final_calculado: saldoReal,
+          entradas_count: entradasBanco.length,
+          saidas_count: saidasBanco.length,
+          ajustes_count: ajustesBanco.length,
+          ajustes_detalhados: ajustesBanco.map(a => ({
+            data: a.data_ajuste,
+            diferenca: a.diferenca,
+            saldo_anterior: a.saldo_anterior,
+            saldo_novo: a.saldo_novo
+          }))
+        });
+      }
       
       // Debug para cada banco
       console.log(`Banco ${banco.nome}:`, {
@@ -93,22 +145,25 @@ export default function FluxoCaixa() {
         saldo_inicial: banco.saldo_inicial,
         totalEntradas_periodo: totalEntradas,
         totalSaidas_periodo: totalSaidas,
+        totalAjustes: totalAjustes,
         saldo_final: saldoReal,
         entradas_count: entradasBanco.length,
-        saidas_count: saidasBanco.length
+        saidas_count: saidasBanco.length,
+        ajustes_count: ajustesBanco.length
       });
       
       return {
         ...banco,
         totalEntradas,
         totalSaidas,
+        totalAjustes,
         saldo: saldoReal
       };
     });
     
     console.log('Bancos com resumo calculado:', resultado);
     return resultado;
-  }, [bancos, entradas, saidas]);
+  }, [bancos, entradas, saidas, ajustesSaldo]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Edit, Trash2, Eye, Download } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Eye, Download, Star } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Select as ShadSelect, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -1106,6 +1106,10 @@ export default function ContasReceber() {
               <p className="text-sm text-muted-foreground mt-1">
                 {contasFiltradas.length} contas encontradas • Total: {formatCurrency(calcularTotalFiltrado())}
               </p>
+              <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                <Star className="h-3 w-3 text-yellow-500" />
+                <span>Receita Não Operacional</span>
+              </div>
             </div>
             <Button
               onClick={exportarParaCSV}
@@ -1136,14 +1140,21 @@ export default function ContasReceber() {
               <tbody>
                 {contasFiltradas.map((conta) => (
                   <tr key={conta.id} className="border-b hover:bg-muted/50">
-                    <td className="p-4 font-medium">{conta.descricao}</td>
+                    <td className="p-4 font-medium">
+                      <div className="flex items-center gap-2">
+                        {conta.descricao}
+                        {(conta as any).tipo_receita === 'nao_operacional' && (
+                          <Star className="h-4 w-4 text-yellow-500" title="Receita Não Operacional" />
+                        )}
+                      </div>
+                    </td>
                     <td className="p-4 text-right font-mono">{formatCurrency(conta.valor)}</td>
-                    <td className="p-4 text-right">{(conta.taxa_percentual ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                    <td className="p-4 text-right">{formatCurrency(conta.valor_taxa ?? 0)}</td>
-                    <td className="p-4 text-right">{formatCurrency(conta.valor_liquido ?? 0)}</td>
+                    <td className="p-4 text-right">{(conta as any).taxa_percentual ? (conta as any).taxa_percentual.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}</td>
+                    <td className="p-4 text-right">{formatCurrency((conta as any).valor_taxa ?? 0)}</td>
+                    <td className="p-4 text-right">{formatCurrency((conta as any).valor_liquido ?? 0)}</td>
                     <td className="p-4 text-center">{conta.data_vencimento ? (() => { const [y, m, d] = conta.data_vencimento.split('-'); return `${d}/${m}/${y}` })() : '-'}</td>
                     <td className="p-4 text-center">{conta.data_recebimento ? (() => { const [y, m, d] = conta.data_recebimento.split('-'); return `${d}/${m}/${y}` })() : '-'}</td>
-                    <td className="p-4 text-center">{bancos.find(b => b.id === conta.banco_id)?.nome || '-'}</td>
+                    <td className="p-4 text-center">{bancos.find(b => b.id === (conta as any).banco_id)?.nome || '-'}</td>
                     <td className="p-4 text-center">
                       <Button variant="ghost" size="sm" onClick={() => handleView(conta)}>
                         <Eye className="h-4 w-4" />

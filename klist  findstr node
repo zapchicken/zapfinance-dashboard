@@ -1,0 +1,5 @@
+[33m41e5471[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Implementa sistema de ajustes de saldo bancario com historico
+[33m66c4c58[m Corrige calculo de saldo no Fluxo de Caixa e adiciona logs de debug
+[33mb60fba3[m Adiciona botão de logout e remove mensagem de 30 dias
+[33m365f8a7[m Atualiza cards do Fluxo de Caixa com cores e layout da imagem
+[33m499ad8d[m Implementa detalhamento e Top 5 na página de Relatórios com exportação Excel
