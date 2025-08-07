@@ -59,9 +59,7 @@ const Index = () => {
                 <Link to="/dashboard">Acessar Dashboard</Link>
               </Button>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Experimente gratuitamente por 30 dias
-            </p>
+
           </div>
         </div>
       </div>
