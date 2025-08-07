@@ -18,6 +18,7 @@ import Fornecedores from "./pages/Fornecedores";
 import Bancos from "./pages/Bancos";
 import Relatorios from "./pages/Relatorios";
 import Configuracoes from "./pages/Configuracoes";
+import AjustesSaldo from "./pages/AjustesSaldo";
 import NotFound from "./pages/NotFound";
 
 function ProtectedLayout() {
@@ -51,6 +52,7 @@ const App = () => (
               <Route path="/receitas" element={<Receitas />} />
               <Route path="/fornecedores" element={<Fornecedores />} />
               <Route path="/bancos" element={<Bancos />} />
+              <Route path="/ajustes-saldo" element={<AjustesSaldo />} />
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/configuracoes" element={<Configuracoes />} />
             </Route>

@@ -9,7 +9,8 @@ import {
   Calculator,
   FileText,
   Settings,
-  LogOut
+  LogOut,
+  DollarSign
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -39,6 +40,7 @@ const cadastroItems = [
   { title: "Receitas", url: "/receitas", icon: CreditCard },
   { title: "Fornecedores", url: "/fornecedores", icon: Users },
   { title: "Bancos", url: "/bancos", icon: Building2 },
+  { title: "Ajustes de Saldo", url: "/ajustes-saldo", icon: DollarSign },
 ];
 
 const relatoriosItems = [
