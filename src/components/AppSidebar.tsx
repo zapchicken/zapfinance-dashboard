@@ -60,7 +60,7 @@ export function AppSidebar() {
       : "text-black hover:bg-[#FF8000] hover:text-white rounded-lg transition-colors";
 
   return (
-    <Sidebar className={collapsed ? "w-14" : "w-64"} collapsible="icon">
+    <Sidebar className={collapsed ? "w-12 sm:w-14" : "w-56 sm:w-64"} collapsible="icon">
       <SidebarContent className="bg-[#F8CA00] border-r border-gray-200 min-h-screen">
         <SidebarGroup>
           <SidebarGroupLabel className="text-muted-foreground text-xs uppercase tracking-wide">

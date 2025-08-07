@@ -710,7 +710,7 @@ export default function Dashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex justify-between items-center">
               <span className="text-sm">Ponto de Equilíbrio</span>
               <span className="font-semibold">{formatCurrency(pontoEquilibrio)}</span>
@@ -742,7 +742,7 @@ export default function Dashboard() {
       </Card>
 
       {/* Resumo de Contas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card className="bg-yellow-50 border-yellow-200 hover:shadow-lg transition-shadow">
           <CardContent className="p-4">
             <div className="text-center">
