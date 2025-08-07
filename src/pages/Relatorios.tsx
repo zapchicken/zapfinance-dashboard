@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, FileText, TrendingUp, DollarSign, BarChart3, Calendar, Filter, Download } from 'lucide-react';
+import { Loader2, FileText, TrendingUp, DollarSign, BarChart3, Calendar, Filter, Download, ArrowUp, ArrowDown, Circle } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { Badge } from '@/components/ui/badge';
 
 export default function Relatorios() {
   const { toast } = useToast();
@@ -14,6 +15,8 @@ export default function Relatorios() {
   const [formato, setFormato] = useState("excel");
   const [loading, setLoading] = useState(false);
   const [dados, setDados] = useState<any>(null);
+  const [relatorioComparativo, setRelatorioComparativo] = useState<any>(null);
+  const [mesesComparacao, setMesesComparacao] = useState(6); // Últimos 6 meses
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -47,6 +50,9 @@ export default function Relatorios() {
         .eq('ativo', true);
 
       setDados({ receitas: receitas || [], despesas: despesas || [], categorias: categorias || [] });
+      
+      // Gerar relatório comparativo
+      gerarRelatorioComparativo(receitas || [], despesas || [], categorias || []);
     } catch (error) {
       console.error('Erro ao buscar dados:', error);
       toast({
@@ -57,6 +63,117 @@ export default function Relatorios() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const gerarRelatorioComparativo = (receitas: any[], despesas: any[], categorias: any[]) => {
+    const hoje = new Date();
+    const meses = [];
+    
+    // Gerar array dos últimos meses
+    for (let i = mesesComparacao - 1; i >= 0; i--) {
+      const data = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+      meses.push({
+        ano: data.getFullYear(),
+        mes: data.getMonth(),
+        nome: data.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+        inicio: new Date(data.getFullYear(), data.getMonth(), 1),
+        fim: new Date(data.getFullYear(), data.getMonth() + 1, 0)
+      });
+    }
+
+    const dadosMensais = meses.map((mes, index) => {
+      // Filtrar dados do mês
+      const receitasMes = receitas.filter(r => {
+        const dataVenc = new Date(r.data_vencimento);
+        return dataVenc >= mes.inicio && dataVenc <= mes.fim;
+      });
+
+      const despesasMes = despesas.filter(d => {
+        const dataVenc = new Date(d.data_vencimento);
+        return dataVenc >= mes.inicio && dataVenc <= mes.fim;
+      });
+
+      // Calcular indicadores
+      const faturamento = receitasMes.reduce((sum, r) => sum + (r.valor || 0), 0);
+      
+      // Categorizar despesas
+      const categoriasFixasIds = categorias.filter(c => c.tipo === 'despesa' && c.nome.toLowerCase().includes('fixa')).map(c => c.id);
+      const categoriasInvestimentoIds = categorias.filter(c => c.tipo === 'despesa' && c.nome.toLowerCase().includes('investimento')).map(c => c.id);
+      
+      const custoVariavel = despesasMes
+        .filter(d => !categoriasFixasIds.includes(d.categoria_id) && !categoriasInvestimentoIds.includes(d.categoria_id))
+        .reduce((sum, d) => sum + (d.valor || 0), 0);
+      
+      const despesaFixa = despesasMes
+        .filter(d => categoriasFixasIds.includes(d.categoria_id))
+        .reduce((sum, d) => sum + (d.valor || 0), 0);
+      
+      const investimentos = despesasMes
+        .filter(d => categoriasInvestimentoIds.includes(d.categoria_id))
+        .reduce((sum, d) => sum + (d.valor || 0), 0);
+
+      const margemContribuicao = faturamento - custoVariavel;
+      const lucroOperacionalAntesInvestimentos = margemContribuicao - despesaFixa;
+      const lucroOperacional = lucroOperacionalAntesInvestimentos - investimentos;
+
+      // Movimentações não operacionais (simulado)
+      const receitaNaoOperacional = receitasMes
+        .filter(r => r.descricao?.toLowerCase().includes('não operacional') || r.descricao?.toLowerCase().includes('nao operacional'))
+        .reduce((sum, r) => sum + (r.valor || 0), 0);
+      
+      const despesaNaoOperacional = despesasMes
+        .filter(d => d.descricao?.toLowerCase().includes('não operacional') || d.descricao?.toLowerCase().includes('nao operacional'))
+        .reduce((sum, d) => sum + (d.valor || 0), 0);
+
+      const movimentacoesNaoOperacionais = receitaNaoOperacional - despesaNaoOperacional;
+      const resultadoLiquido = lucroOperacional + movimentacoesNaoOperacionais;
+
+      // Calcular percentuais
+      const percentualCustoVariavel = faturamento > 0 ? (custoVariavel / faturamento) * 100 : 0;
+      const percentualMargemContribuicao = faturamento > 0 ? (margemContribuicao / faturamento) * 100 : 0;
+      const percentualDespesaFixa = faturamento > 0 ? (despesaFixa / faturamento) * 100 : 0;
+      const percentualLucroOperacional = faturamento > 0 ? (lucroOperacional / faturamento) * 100 : 0;
+      const percentualInvestimentos = faturamento > 0 ? (investimentos / faturamento) * 100 : 0;
+      const percentualMovimentacoesNaoOperacionais = faturamento > 0 ? (movimentacoesNaoOperacionais / faturamento) * 100 : 0;
+      const percentualResultadoLiquido = faturamento > 0 ? (resultadoLiquido / faturamento) * 100 : 0;
+
+      // Calcular variação mensal (A/H)
+      const variacaoMensal = index > 0 ? {
+        faturamento: faturamento > 0 ? ((faturamento - dadosMensais[index - 1].faturamento) / dadosMensais[index - 1].faturamento) * 100 : 0,
+        custoVariavel: custoVariavel > 0 ? ((custoVariavel - dadosMensais[index - 1].custoVariavel) / dadosMensais[index - 1].custoVariavel) * 100 : 0,
+        margemContribuicao: margemContribuicao > 0 ? ((margemContribuicao - dadosMensais[index - 1].margemContribuicao) / dadosMensais[index - 1].margemContribuicao) * 100 : 0,
+        despesaFixa: despesaFixa > 0 ? ((despesaFixa - dadosMensais[index - 1].despesaFixa) / dadosMensais[index - 1].despesaFixa) * 100 : 0,
+        lucroOperacional: lucroOperacional > 0 ? ((lucroOperacional - dadosMensais[index - 1].lucroOperacional) / dadosMensais[index - 1].lucroOperacional) * 100 : 0,
+        investimentos: investimentos > 0 ? ((investimentos - dadosMensais[index - 1].investimentos) / dadosMensais[index - 1].investimentos) * 100 : 0,
+        movimentacoesNaoOperacionais: movimentacoesNaoOperacionais > 0 ? ((movimentacoesNaoOperacionais - dadosMensais[index - 1].movimentacoesNaoOperacionais) / dadosMensais[index - 1].movimentacoesNaoOperacionais) * 100 : 0,
+        resultadoLiquido: resultadoLiquido > 0 ? ((resultadoLiquido - dadosMensais[index - 1].resultadoLiquido) / dadosMensais[index - 1].resultadoLiquido) * 100 : 0
+      } : null;
+
+      return {
+        mes: mes.nome,
+        faturamento,
+        custoVariavel,
+        margemContribuicao,
+        despesaFixa,
+        lucroOperacionalAntesInvestimentos,
+        investimentos,
+        lucroOperacional,
+        receitaNaoOperacional,
+        despesaNaoOperacional,
+        movimentacoesNaoOperacionais,
+        resultadoLiquido,
+        percentualCustoVariavel,
+        percentualMargemContribuicao,
+        percentualDespesaFixa,
+        percentualLucroOperacional,
+        percentualInvestimentos,
+        percentualMovimentacoesNaoOperacionais,
+        percentualResultadoLiquido,
+        variacaoMensal
+      };
+    });
+
+    setRelatorioComparativo(dadosMensais);
   };
 
   const calcularDadosRelatorio = () => {
@@ -157,6 +274,53 @@ export default function Relatorios() {
       setLoading(false);
     }
   }
+
+  const exportarRelatorioComparativo = () => {
+    if (!relatorioComparativo || relatorioComparativo.length === 0) {
+      toast({
+        title: "Aviso",
+        description: "Não há dados para exportar",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const workbook = XLSX.utils.book_new();
+    
+    // Dados para exportação
+    const dadosExport = relatorioComparativo.map((mes: any) => ({
+      'Mês': mes.mes,
+      'Faturamento': mes.faturamento,
+      'Custo Variável': mes.custoVariavel,
+      'Margem de Contribuição': mes.margemContribuicao,
+      'Despesa Fixa': mes.despesaFixa,
+      'Lucro Operacional (Antes Investimentos)': mes.lucroOperacionalAntesInvestimentos,
+      'Investimentos': mes.investimentos,
+      'Lucro Operacional': mes.lucroOperacional,
+      'Receita Não Operacional': mes.receitaNaoOperacional,
+      'Despesa Não Operacional': mes.despesaNaoOperacional,
+      'Movimentações Não Operacionais': mes.movimentacoesNaoOperacionais,
+      'Resultado Líquido': mes.resultadoLiquido,
+      '% Custo Variável': mes.percentualCustoVariavel,
+      '% Margem Contribuição': mes.percentualMargemContribuicao,
+      '% Despesa Fixa': mes.percentualDespesaFixa,
+      '% Lucro Operacional': mes.percentualLucroOperacional,
+      '% Investimentos': mes.percentualInvestimentos,
+      '% Movimentações Não Operacionais': mes.percentualMovimentacoesNaoOperacionais,
+      '% Resultado Líquido': mes.percentualResultadoLiquido
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dadosExport);
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Relatório Comparativo');
+    
+    // Salvar arquivo
+    XLSX.writeFile(workbook, `relatorio_comparativo_${new Date().toISOString().split('T')[0]}.xlsx`);
+    
+    toast({
+      title: "Sucesso",
+      description: "Relatório comparativo exportado com sucesso!",
+    });
+  };
 
   const gerarRelatorioEspecifico = (tipoRelatorio: string, dadosRelatorio: any, formato: string) => {
     // Criar workbook e worksheet
@@ -803,6 +967,282 @@ export default function Relatorios() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Relatório Comparativo Mensal */}
+      <Card className="col-span-full">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <BarChart3 className="h-6 w-6 text-primary" />
+                Relatório Comparativo Mensal
+              </CardTitle>
+              <CardDescription>
+                Análise detalhada dos indicadores financeiros por mês
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select value={mesesComparacao.toString()} onValueChange={(value) => setMesesComparacao(parseInt(value))}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="3">3 meses</SelectItem>
+                  <SelectItem value="6">6 meses</SelectItem>
+                  <SelectItem value="12">12 meses</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button onClick={exportarRelatorioComparativo} variant="outline" className="flex items-center gap-2">
+                <Download className="h-4 w-4" />
+                Exportar Excel
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <span className="ml-2">Carregando dados...</span>
+            </div>
+          ) : relatorioComparativo && relatorioComparativo.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-3 font-medium text-sm">Indicadores</th>
+                    {relatorioComparativo.map((mes: any, index: number) => (
+                      <th key={index} className="text-center p-3 font-medium text-sm border-l">
+                        <div className="text-xs text-muted-foreground mb-1">{mes.mes}</div>
+                        <div className="grid grid-cols-2 gap-1 text-xs">
+                          <span>Valores</span>
+                          <span>A/H</span>
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Faturamento */}
+                  <tr className="border-b hover:bg-muted/30">
+                    <td className="p-3 font-medium text-sm">Faturamento</td>
+                    {relatorioComparativo.map((mes: any, index: number) => (
+                      <td key={index} className="text-center p-3 border-l">
+                        <div className="font-medium">{formatCurrency(mes.faturamento)}</div>
+                        <div className="text-xs text-muted-foreground">100%</div>
+                        {mes.variacaoMensal && (
+                          <div className={`text-xs flex items-center justify-center gap-1 mt-1 ${
+                            mes.variacaoMensal.faturamento >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {mes.variacaoMensal.faturamento >= 0 ? (
+                              <ArrowUp className="h-3 w-3" />
+                            ) : (
+                              <ArrowDown className="h-3 w-3" />
+                            )}
+                            {Math.abs(mes.variacaoMensal.faturamento).toFixed(1)}%
+                          </div>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Custo Variável */}
+                  <tr className="border-b hover:bg-muted/30">
+                    <td className="p-3 font-medium text-sm">Custo Variável</td>
+                    {relatorioComparativo.map((mes: any, index: number) => (
+                      <td key={index} className="text-center p-3 border-l">
+                        <div className="font-medium">{formatCurrency(mes.custoVariavel)}</div>
+                        <div className="text-xs text-muted-foreground">{mes.percentualCustoVariavel.toFixed(1)}%</div>
+                        {mes.variacaoMensal && (
+                          <div className={`text-xs flex items-center justify-center gap-1 mt-1 ${
+                            mes.variacaoMensal.custoVariavel >= 0 ? 'text-red-600' : 'text-green-600'
+                          }`}>
+                            {mes.variacaoMensal.custoVariavel >= 0 ? (
+                              <ArrowUp className="h-3 w-3" />
+                            ) : (
+                              <ArrowDown className="h-3 w-3" />
+                            )}
+                            {Math.abs(mes.variacaoMensal.custoVariavel).toFixed(1)}%
+                          </div>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Margem de Contribuição */}
+                  <tr className="border-b hover:bg-muted/30">
+                    <td className="p-3 font-medium text-sm">Margem de Contribuição</td>
+                    {relatorioComparativo.map((mes: any, index: number) => (
+                      <td key={index} className="text-center p-3 border-l">
+                        <div className="font-medium">{formatCurrency(mes.margemContribuicao)}</div>
+                        <div className="text-xs text-muted-foreground">{mes.percentualMargemContribuicao.toFixed(1)}%</div>
+                        {mes.variacaoMensal && (
+                          <div className={`text-xs flex items-center justify-center gap-1 mt-1 ${
+                            mes.variacaoMensal.margemContribuicao >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {mes.variacaoMensal.margemContribuicao >= 0 ? (
+                              <ArrowUp className="h-3 w-3" />
+                            ) : (
+                              <ArrowDown className="h-3 w-3" />
+                            )}
+                            {Math.abs(mes.variacaoMensal.margemContribuicao).toFixed(1)}%
+                          </div>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Despesa Fixa */}
+                  <tr className="border-b hover:bg-muted/30">
+                    <td className="p-3 font-medium text-sm">Despesa Fixa</td>
+                    {relatorioComparativo.map((mes: any, index: number) => (
+                      <td key={index} className="text-center p-3 border-l">
+                        <div className="font-medium">{formatCurrency(mes.despesaFixa)}</div>
+                        <div className="text-xs text-muted-foreground">{mes.percentualDespesaFixa.toFixed(1)}%</div>
+                        {mes.variacaoMensal && (
+                          <div className={`text-xs flex items-center justify-center gap-1 mt-1 ${
+                            mes.variacaoMensal.despesaFixa >= 0 ? 'text-red-600' : 'text-green-600'
+                          }`}>
+                            {mes.variacaoMensal.despesaFixa >= 0 ? (
+                              <ArrowUp className="h-3 w-3" />
+                            ) : (
+                              <ArrowDown className="h-3 w-3" />
+                            )}
+                            {Math.abs(mes.variacaoMensal.despesaFixa).toFixed(1)}%
+                          </div>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Lucro Operacional Antes Investimentos */}
+                  <tr className="border-b hover:bg-muted/30 bg-blue-50">
+                    <td className="p-3 font-bold text-sm text-blue-800">LUCRO OPERACIONAL ANTES INVESTIMENTOS</td>
+                    {relatorioComparativo.map((mes: any, index: number) => (
+                      <td key={index} className="text-center p-3 border-l">
+                        <div className={`font-bold ${mes.lucroOperacionalAntesInvestimentos >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatCurrency(mes.lucroOperacionalAntesInvestimentos)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {mes.faturamento > 0 ? ((mes.lucroOperacionalAntesInvestimentos / mes.faturamento) * 100).toFixed(1) : 0}%
+                        </div>
+                        {mes.variacaoMensal && (
+                          <div className={`text-xs flex items-center justify-center gap-1 mt-1 ${
+                            mes.variacaoMensal.lucroOperacional >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {mes.variacaoMensal.lucroOperacional >= 0 ? (
+                              <ArrowUp className="h-3 w-3" />
+                            ) : (
+                              <ArrowDown className="h-3 w-3" />
+                            )}
+                            {Math.abs(mes.variacaoMensal.lucroOperacional).toFixed(1)}%
+                          </div>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Investimentos */}
+                  <tr className="border-b hover:bg-muted/30">
+                    <td className="p-3 font-medium text-sm">Investimentos</td>
+                    {relatorioComparativo.map((mes: any, index: number) => (
+                      <td key={index} className="text-center p-3 border-l">
+                        <div className="font-medium">{formatCurrency(mes.investimentos)}</div>
+                        <div className="text-xs text-muted-foreground">{mes.percentualInvestimentos.toFixed(1)}%</div>
+                        {mes.variacaoMensal && (
+                          <div className="text-xs flex items-center justify-center gap-1 mt-1 text-blue-600">
+                            <Circle className="h-3 w-3" />
+                            {Math.abs(mes.variacaoMensal.investimentos).toFixed(1)}%
+                          </div>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Lucro Operacional */}
+                  <tr className="border-b hover:bg-muted/30 bg-green-50">
+                    <td className="p-3 font-bold text-sm text-green-800">LUCRO OPERACIONAL</td>
+                    {relatorioComparativo.map((mes: any, index: number) => (
+                      <td key={index} className="text-center p-3 border-l">
+                        <div className={`font-bold ${mes.lucroOperacional >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatCurrency(mes.lucroOperacional)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{mes.percentualLucroOperacional.toFixed(1)}%</div>
+                        {mes.variacaoMensal && (
+                          <div className={`text-xs flex items-center justify-center gap-1 mt-1 ${
+                            mes.variacaoMensal.lucroOperacional >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {mes.variacaoMensal.lucroOperacional >= 0 ? (
+                              <ArrowUp className="h-3 w-3" />
+                            ) : (
+                              <ArrowDown className="h-3 w-3" />
+                            )}
+                            {Math.abs(mes.variacaoMensal.lucroOperacional).toFixed(1)}%
+                          </div>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Movimentações Não Operacionais */}
+                  <tr className="border-b hover:bg-muted/30 bg-orange-50">
+                    <td className="p-3 font-bold text-sm text-orange-800">MOVIMENTAÇÕES NÃO OPERACIONAIS</td>
+                    {relatorioComparativo.map((mes: any, index: number) => (
+                      <td key={index} className="text-center p-3 border-l">
+                        <div className={`font-bold ${mes.movimentacoesNaoOperacionais >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatCurrency(mes.movimentacoesNaoOperacionais)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{mes.percentualMovimentacoesNaoOperacionais.toFixed(1)}%</div>
+                        {mes.variacaoMensal && (
+                          <div className={`text-xs flex items-center justify-center gap-1 mt-1 ${
+                            mes.variacaoMensal.movimentacoesNaoOperacionais >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {mes.variacaoMensal.movimentacoesNaoOperacionais >= 0 ? (
+                              <ArrowUp className="h-3 w-3" />
+                            ) : (
+                              <ArrowDown className="h-3 w-3" />
+                            )}
+                            {Math.abs(mes.variacaoMensal.movimentacoesNaoOperacionais).toFixed(1)}%
+                          </div>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Resultado Líquido */}
+                  <tr className="border-b hover:bg-muted/30 bg-purple-50">
+                    <td className="p-3 font-bold text-sm text-purple-800">RESULTADO LÍQUIDO</td>
+                    {relatorioComparativo.map((mes: any, index: number) => (
+                      <td key={index} className="text-center p-3 border-l">
+                        <div className={`font-bold ${mes.resultadoLiquido >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatCurrency(mes.resultadoLiquido)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">{mes.percentualResultadoLiquido.toFixed(1)}%</div>
+                        {mes.variacaoMensal && (
+                          <div className={`text-xs flex items-center justify-center gap-1 mt-1 ${
+                            mes.variacaoMensal.resultadoLiquido >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {mes.variacaoMensal.resultadoLiquido >= 0 ? (
+                              <ArrowUp className="h-3 w-3" />
+                            ) : (
+                              <ArrowDown className="h-3 w-3" />
+                            )}
+                            {Math.abs(mes.variacaoMensal.resultadoLiquido).toFixed(1)}%
+                          </div>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              Nenhum dado disponível para o período selecionado
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Histórico de relatórios */}
       <Card>
