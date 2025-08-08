@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Plus, 
   DollarSign, 
@@ -16,7 +17,12 @@ import {
   Calendar,
   Building2,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  Edit,
+  Trash2,
+  Eye,
+  Filter,
+  Search
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -43,19 +49,72 @@ interface AjusteSaldo {
   };
 }
 
+interface Transacao {
+  id: string;
+  banco_id: string;
+  categoria_id?: string;
+  fornecedor_id?: string;
+  descricao: string;
+  valor: number;
+  tipo: 'receita' | 'despesa' | 'transferencia';
+  data_transacao: string;
+  status: 'pendente' | 'efetivada' | 'cancelada';
+  observacoes?: string;
+  created_at: string;
+  updated_at: string;
+  banco?: {
+    nome: string;
+  };
+  categoria?: {
+    nome: string;
+  };
+  fornecedor?: {
+    nome: string;
+  };
+}
+
+interface Categoria {
+  id: string;
+  nome: string;
+  tipo: string;
+}
+
+interface Fornecedor {
+  id: string;
+  nome: string;
+}
+
 export default function AjustesSaldo() {
   console.log('🔄 Componente AjustesSaldo renderizado');
   
   const [bancos, setBancos] = useState<Banco[]>([]);
   const [ajustes, setAjustes] = useState<AjusteSaldo[]>([]);
+  const [transacoes, setTransacoes] = useState<Transacao[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedBanco, setSelectedBanco] = useState<string>("");
+  const [selectedBancoFilter, setSelectedBancoFilter] = useState<string>("todos");
   const [saldoAtual, setSaldoAtual] = useState<number>(0);
   const [saldoNovo, setSaldoNovo] = useState<string>("");
   const [motivo, setMotivo] = useState<string>("");
   const [observacoes, setObservacoes] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+  
+  // Estados para edição de transação
+  const [editingTransacao, setEditingTransacao] = useState<Transacao | null>(null);
+  const [editForm, setEditForm] = useState({
+    descricao: "",
+    valor: "",
+    tipo: "despesa" as 'receita' | 'despesa' | 'transferencia',
+    data_transacao: "",
+    status: "efetivada" as 'pendente' | 'efetivada' | 'cancelada',
+    categoria_id: "",
+    fornecedor_id: "",
+    observacoes: ""
+  });
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -88,12 +147,6 @@ export default function AjustesSaldo() {
       }
       
       console.log('✅ Bancos carregados:', bancosData);
-      console.log('💰 Saldos dos bancos:', bancosData?.map(b => ({
-        nome: b.nome,
-        saldo_atual: b.saldo_atual,
-        saldo_inicial: b.saldo_inicial
-      })));
-      console.log('📊 Dados completos dos bancos:', JSON.stringify(bancosData, null, 2));
       setBancos(bancosData || []);
 
       // Buscar ajustes
@@ -113,6 +166,42 @@ export default function AjustesSaldo() {
       
       console.log('✅ Ajustes carregados:', ajustesData);
       setAjustes(ajustesData || [] as any);
+
+      // Buscar transações
+      console.log('📊 Buscando transações...');
+      const { data: transacoesData, error: transacoesError } = await (supabase as any)
+        .from('transacoes')
+        .select(`
+          *,
+          banco: bancos(nome),
+          categoria: categorias(nome),
+          fornecedor: fornecedores(nome)
+        `)
+        .order('data_transacao', { ascending: false });
+      
+      if (transacoesError) {
+        console.error('❌ Erro ao buscar transações:', transacoesError);
+        throw transacoesError;
+      }
+      
+      console.log('✅ Transações carregadas:', transacoesData);
+      setTransacoes(transacoesData || [] as any);
+
+      // Buscar categorias
+      const { data: categoriasData } = await supabase
+        .from('categorias')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('nome');
+      setCategorias(categoriasData || []);
+
+      // Buscar fornecedores
+      const { data: fornecedoresData } = await supabase
+        .from('fornecedores')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('nome');
+      setFornecedores(fornecedoresData || []);
       
       console.log('✅ fetchData concluído com sucesso');
     } catch (error) {
@@ -201,6 +290,108 @@ export default function AjustesSaldo() {
     }
   };
 
+  // Funções para edição de transações
+  const handleEditTransacao = (transacao: Transacao) => {
+    setEditingTransacao(transacao);
+    setEditForm({
+      descricao: transacao.descricao,
+      valor: transacao.valor.toString(),
+      tipo: transacao.tipo,
+      data_transacao: transacao.data_transacao,
+      status: transacao.status,
+      categoria_id: transacao.categoria_id || "",
+      fornecedor_id: transacao.fornecedor_id || "",
+      observacoes: transacao.observacoes || ""
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateTransacao = async () => {
+    if (!editingTransacao) return;
+
+    const valor = parseFloat(editForm.valor);
+    if (isNaN(valor)) {
+      toast({
+        title: "Aviso",
+        description: "Valor deve ser um número válido",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const { error } = await (supabase as any)
+        .from('transacoes')
+        .update({
+          descricao: editForm.descricao,
+          valor: valor,
+          tipo: editForm.tipo,
+          data_transacao: editForm.data_transacao,
+          status: editForm.status,
+          categoria_id: editForm.categoria_id || null,
+          fornecedor_id: editForm.fornecedor_id || null,
+          observacoes: editForm.observacoes || null
+        })
+        .eq('id', editingTransacao.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Transação atualizada com sucesso!",
+      });
+
+      setEditDialogOpen(false);
+      setEditingTransacao(null);
+      await fetchData();
+    } catch (error) {
+      console.error('Erro ao atualizar transação:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar transação",
+        variant: "destructive"
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteTransacao = async (transacaoId: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta transação?')) return;
+
+    setSubmitting(true);
+    try {
+      const { error } = await (supabase as any)
+        .from('transacoes')
+        .delete()
+        .eq('id', transacaoId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Transação excluída com sucesso!",
+      });
+
+      await fetchData();
+    } catch (error) {
+      console.error('Erro ao excluir transação:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao excluir transação",
+        variant: "destructive"
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Filtrar transações por banco
+  const transacoesFiltradas = transacoes.filter(t => 
+    selectedBancoFilter === "todos" || t.banco_id === selectedBancoFilter
+  );
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -218,6 +409,24 @@ export default function AjustesSaldo() {
     });
   };
 
+  const getTipoColor = (tipo: string) => {
+    switch (tipo) {
+      case 'receita': return 'text-green-600';
+      case 'despesa': return 'text-red-600';
+      case 'transferencia': return 'text-blue-600';
+      default: return 'text-gray-600';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'efetivada': return 'bg-green-100 text-green-800';
+      case 'pendente': return 'bg-yellow-100 text-yellow-800';
+      case 'cancelada': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center h-64">Carregando...</div>;
   }
@@ -227,7 +436,7 @@ export default function AjustesSaldo() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Ajustes de Saldo</h1>
-          <p className="text-muted-foreground">Gerencie os saldos das contas bancárias</p>
+          <p className="text-muted-foreground">Gerencie os saldos das contas bancárias e transações</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
@@ -357,6 +566,98 @@ export default function AjustesSaldo() {
         ))}
       </div>
 
+      {/* Transações */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Transações
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Select value={selectedBancoFilter} onValueChange={setSelectedBancoFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filtrar por banco" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os bancos</SelectItem>
+                  {bancos.map(banco => (
+                    <SelectItem key={banco.id} value={banco.id}>
+                      {banco.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {transacoesFiltradas.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Nenhuma transação encontrada
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Banco</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Valor</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {transacoesFiltradas.map(transacao => (
+                      <TableRow key={transacao.id}>
+                        <TableCell>{formatDate(transacao.data_transacao)}</TableCell>
+                        <TableCell>{transacao.banco?.nome}</TableCell>
+                        <TableCell className="max-w-xs truncate">{transacao.descricao}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={getTipoColor(transacao.tipo)}>
+                            {transacao.tipo}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className={getTipoColor(transacao.tipo)}>
+                          {transacao.tipo === 'despesa' ? '-' : '+'}{formatCurrency(transacao.valor)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(transacao.status)}>
+                            {transacao.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditTransacao(transacao)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteTransacao(transacao.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Histórico de Ajustes */}
       <Card>
         <CardHeader>
@@ -414,6 +715,131 @@ export default function AjustesSaldo() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Dialog de Edição de Transação */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Editar Transação</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-descricao">Descrição</Label>
+                <Input
+                  id="edit-descricao"
+                  value={editForm.descricao}
+                  onChange={(e) => setEditForm({...editForm, descricao: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-valor">Valor</Label>
+                <Input
+                  id="edit-valor"
+                  type="number"
+                  step="0.01"
+                  value={editForm.valor}
+                  onChange={(e) => setEditForm({...editForm, valor: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="edit-tipo">Tipo</Label>
+                <Select value={editForm.tipo} onValueChange={(value: 'receita' | 'despesa' | 'transferencia') => 
+                  setEditForm({...editForm, tipo: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="receita">Receita</SelectItem>
+                    <SelectItem value="despesa">Despesa</SelectItem>
+                    <SelectItem value="transferencia">Transferência</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="edit-data">Data</Label>
+                <Input
+                  id="edit-data"
+                  type="date"
+                  value={editForm.data_transacao}
+                  onChange={(e) => setEditForm({...editForm, data_transacao: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-status">Status</Label>
+                <Select value={editForm.status} onValueChange={(value: 'pendente' | 'efetivada' | 'cancelada') => 
+                  setEditForm({...editForm, status: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pendente">Pendente</SelectItem>
+                    <SelectItem value="efetivada">Efetivada</SelectItem>
+                    <SelectItem value="cancelada">Cancelada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-categoria">Categoria</Label>
+                <Select value={editForm.categoria_id} onValueChange={(value) => 
+                  setEditForm({...editForm, categoria_id: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categorias.map(categoria => (
+                      <SelectItem key={categoria.id} value={categoria.id}>
+                        {categoria.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="edit-fornecedor">Fornecedor</Label>
+                <Select value={editForm.fornecedor_id} onValueChange={(value) => 
+                  setEditForm({...editForm, fornecedor_id: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um fornecedor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fornecedores.map(fornecedor => (
+                      <SelectItem key={fornecedor.id} value={fornecedor.id}>
+                        {fornecedor.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="edit-observacoes">Observações</Label>
+              <Textarea
+                id="edit-observacoes"
+                value={editForm.observacoes}
+                onChange={(e) => setEditForm({...editForm, observacoes: e.target.value})}
+                rows={3}
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleUpdateTransacao} disabled={submitting}>
+                {submitting ? "Salvando..." : "Atualizar Transação"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 
