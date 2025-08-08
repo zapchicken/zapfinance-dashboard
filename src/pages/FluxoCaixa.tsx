@@ -30,6 +30,7 @@ export default function FluxoCaixa() {
   const [movimentacoes, setMovimentacoes] = useState<any[]>([]);
   const [entradas, setEntradas] = useState<any[]>([]);
   const [saidas, setSaidas] = useState<any[]>([]);
+  const [transacoes, setTransacoes] = useState<any[]>([]);
   const [ajustesSaldo, setAjustesSaldo] = useState<AjusteSaldo[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -87,6 +88,18 @@ export default function FluxoCaixa() {
       console.log('Saídas filtradas (com data_pagamento):', saidasFiltradas);
       console.log('Filtros aplicados:', { dataInicialStr, dataFinalStr });
       
+      // Buscar transações
+      let transacoesQuery = (supabase as any)
+        .from('transacoes')
+        .select('*')
+        .eq('user_id', user.id);
+      if (dataInicialStr) transacoesQuery = transacoesQuery.gte('data_transacao', dataInicialStr);
+      if (dataFinalStr) transacoesQuery = transacoesQuery.lte('data_transacao', dataFinalStr);
+      const { data: transacoesData } = await transacoesQuery;
+      setTransacoes(transacoesData || []);
+      
+      console.log('Transações carregadas:', transacoesData);
+      
       // Buscar ajustes de saldo usando any para contornar o problema de tipos
       const { data: ajustesData } = await (supabase as any)
         .from('ajustes_saldo')
@@ -111,8 +124,19 @@ export default function FluxoCaixa() {
     const resultado = bancos.map(banco => {
       const entradasBanco = entradas.filter((e: any) => e.banco_id === banco.id);
       const saidasBanco = saidas.filter((s: any) => s.banco_id === banco.id);
-      const totalEntradas = entradasBanco.reduce((sum, e) => sum + (e.valor_liquido || e.valor || 0), 0);
-      const totalSaidas = saidasBanco.reduce((sum, s) => sum + (s.valor || 0), 0);
+      const transacoesBanco = transacoes.filter((t: any) => t.banco_id === banco.id);
+      
+      // Calcular totais das transações
+      const transacoesReceitas = transacoesBanco.filter((t: any) => t.tipo === 'receita');
+      const transacoesDespesas = transacoesBanco.filter((t: any) => t.tipo === 'despesa');
+      const transacoesTransferencias = transacoesBanco.filter((t: any) => t.tipo === 'transferencia');
+      
+      const totalTransacoesReceitas = transacoesReceitas.reduce((sum, t) => sum + (t.valor || 0), 0);
+      const totalTransacoesDespesas = transacoesDespesas.reduce((sum, t) => sum + (t.valor || 0), 0);
+      const totalTransacoesTransferencias = transacoesTransferencias.reduce((sum, t) => sum + (t.valor || 0), 0);
+      
+      const totalEntradas = entradasBanco.reduce((sum, e) => sum + (e.valor_liquido || e.valor || 0), 0) + totalTransacoesReceitas;
+      const totalSaidas = saidasBanco.reduce((sum, s) => sum + (s.valor || 0), 0) + totalTransacoesDespesas;
       
       // Calcular ajustes de saldo para este banco
       const ajustesBanco = ajustesSaldo.filter(a => a.banco_id === banco.id);
@@ -133,6 +157,10 @@ export default function FluxoCaixa() {
           saldo_final_calculado: saldoReal,
           entradas_count: entradasBanco.length,
           saidas_count: saidasBanco.length,
+          transacoes_count: transacoesBanco.length,
+          transacoes_receitas: totalTransacoesReceitas,
+          transacoes_despesas: totalTransacoesDespesas,
+          transacoes_transferencias: totalTransacoesTransferencias,
           ajustes_count: ajustesBanco.length,
           ajustes_detalhados: ajustesBanco.map(a => ({
             data: a.data_ajuste,
@@ -153,6 +181,9 @@ export default function FluxoCaixa() {
         saldo_final: saldoReal,
         entradas_count: entradasBanco.length,
         saidas_count: saidasBanco.length,
+        transacoes_count: transacoesBanco.length,
+        transacoes_receitas: totalTransacoesReceitas,
+        transacoes_despesas: totalTransacoesDespesas,
         ajustes_count: ajustesBanco.length
       });
       
@@ -161,13 +192,16 @@ export default function FluxoCaixa() {
         totalEntradas,
         totalSaidas,
         totalAjustes,
+        totalTransacoesReceitas,
+        totalTransacoesDespesas,
+        totalTransacoesTransferencias,
         saldo: saldoReal
       };
     });
     
     console.log('Bancos com resumo calculado:', resultado);
     return resultado;
-  }, [bancos, entradas, saidas, ajustesSaldo]);
+  }, [bancos, entradas, saidas, transacoes, ajustesSaldo]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
