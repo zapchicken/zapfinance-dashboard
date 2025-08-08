@@ -101,7 +101,7 @@ export default function Despesas() {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Tem certeza que deseja excluir esta categoria?')) return;
-    const { error } = await supabase.from('categorias').delete().eq('id', id);
+    const { error } = await supabase.from('categorias').delete().eq('id', id).eq('user_id', user.id);
     if (!error) {
       fetchCategorias();
     } else {
