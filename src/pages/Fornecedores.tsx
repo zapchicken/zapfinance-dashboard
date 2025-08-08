@@ -34,7 +34,11 @@ export default function Fornecedores() {
 
   const fetchFornecedores = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('fornecedores').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('fornecedores')
+      .select('*')
+      .eq('user_id', user?.id)
+      .order('created_at', { ascending: false });
     if (!error) setFornecedores(data || []);
     setLoading(false);
   };

@@ -46,7 +46,8 @@ export default function FluxoCaixa() {
       const { data: bancosData } = await supabase
         .from('bancos')
         .select('*')
-        .eq('ativo', true);
+        .eq('ativo', true)
+        .eq('user_id', user.id);
       setBancos(bancosData || []);
 
       // Usar datas do filtro
@@ -56,7 +57,8 @@ export default function FluxoCaixa() {
       // Buscar entradas (contas_receber) - todas as contas
       let entradasQuery = supabase
         .from('contas_receber')
-        .select('*');
+        .select('*')
+        .eq('user_id', user.id);
       if (dataInicialStr) entradasQuery = entradasQuery.gte('data_recebimento', dataInicialStr);
       if (dataFinalStr) entradasQuery = entradasQuery.lte('data_recebimento', dataFinalStr);
       const { data: entradasData } = await entradasQuery;
@@ -71,7 +73,8 @@ export default function FluxoCaixa() {
       // Buscar saídas (contas_pagar) - todas as contas
       let saidasQuery = supabase
         .from('contas_pagar')
-        .select('*');
+        .select('*')
+        .eq('user_id', user.id);
       if (dataInicialStr) saidasQuery = saidasQuery.gte('data_vencimento', dataInicialStr);
       if (dataFinalStr) saidasQuery = saidasQuery.lte('data_vencimento', dataFinalStr);
       const { data: saidasData } = await saidasQuery;
@@ -88,6 +91,7 @@ export default function FluxoCaixa() {
       const { data: ajustesData } = await (supabase as any)
         .from('ajustes_saldo')
         .select('*')
+        .eq('user_id', user.id)
         .order('data_ajuste', { ascending: true });
       setAjustesSaldo(ajustesData || []);
       

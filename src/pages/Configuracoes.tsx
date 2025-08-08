@@ -40,8 +40,8 @@ export default function Configuracoes() {
         supabase.from('receitas').select('*').eq('user_id', user.id),
         supabase.from('contas_pagar').select('*').eq('user_id', user.id),
         supabase.from('categorias').select('*').eq('user_id', user.id),
-        supabase.from('fornecedores').select('*'),
-        supabase.from('bancos').select('*').eq('ativo', true)
+        supabase.from('fornecedores').select('*').eq('user_id', user.id),
+        supabase.from('bancos').select('*').eq('ativo', true).eq('user_id', user.id)
       ]);
 
       const backupData = {

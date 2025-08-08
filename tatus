@@ -1,0 +1,3 @@
+[33m5c41114[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m fix: corrigir cálculo de saldo no fluxo de caixa incluindo ajustes de saldo
+[33m6092de0[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Corrige cálculo de saldo no Fluxo de Caixa para usar saldo inicial + movimentações
+[33m5303d38[m Adiciona logs detalhados para debug dos saldos

@@ -56,6 +56,7 @@ export default function Bancos() {
     const { data, error } = await supabase
       .from('bancos')
       .select('*')
+      .eq('user_id', user.id)
       .order('nome');
       
     if (!error) setBancos(data || []);

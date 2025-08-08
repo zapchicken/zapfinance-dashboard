@@ -71,8 +71,8 @@ interface ContaReceber {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { data: receitas } = useReceitas(user?.id);
-  const { data: contasPagar } = useContasPagar(user?.id);
+  const { data: receitas } = useReceitas();
+  const { data: contasPagar } = useContasPagar();
   const [bancos, setBancos] = useState<Banco[]>([]);
   const [categoriasDespesas, setCategoriasDespesas] = useState<any[]>([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
@@ -87,7 +87,11 @@ export default function Dashboard() {
   // Fetch categorias de despesas
   const fetchCategoriasDespesas = async () => {
     if (!user) return;
-    const { data } = await supabase.from("categorias").select("*").eq("tipo", "despesa");
+    const { data } = await supabase
+      .from("categorias")
+      .select("*")
+      .eq("tipo", "despesa")
+      .eq('user_id', user.id);
     setCategoriasDespesas(data || []);
   };
 

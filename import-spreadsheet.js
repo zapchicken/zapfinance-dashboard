@@ -7,10 +7,17 @@ import path from 'path'
 dotenv.config()
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
+// Prefira SERVICE_ROLE para importar com RLS ativo (NÃO use em frontend)
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
+const seedUserId = process.env.SUPABASE_SEED_USER_ID || process.env.USER_ID
 
 if (!supabaseUrl || !supabaseKey) {
-  console.error('❌ Variáveis de ambiente não encontradas!')
+  console.error('❌ Variáveis de ambiente não encontradas! Defina VITE_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou VITE_SUPABASE_ANON_KEY).')
+  process.exit(1)
+}
+
+if (!seedUserId) {
+  console.error('❌ Defina o USER_ID do dono dos dados (SUPABASE_SEED_USER_ID ou USER_ID).')
   process.exit(1)
 }
 
@@ -73,6 +80,9 @@ function formatCurrency(value) {
 
 async function importData() {
   console.log('📊 Iniciando importação de dados...')
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.warn('⚠️ Executando com chave ANON. Com RLS ativo, inserts podem falhar. Preferir SUPABASE_SERVICE_ROLE_KEY para importação administrativa.')
+  }
   
   try {
     // Verificar se o arquivo de dados existe
@@ -125,7 +135,8 @@ async function importReceita(row) {
     valor: formatCurrency(row.valor),
     data_vencimento: formatDate(row.data_vencimento),
     data_recebimento: formatDate(row.data_recebimento),
-    status: row.status || 'pendente'
+    status: row.status || 'pendente',
+    user_id: seedUserId,
   }
   
   const { error } = await supabase
@@ -145,7 +156,8 @@ async function importDespesa(row) {
     valor: formatCurrency(row.valor),
     data_vencimento: formatDate(row.data_vencimento),
     data_pagamento: formatDate(row.data_pagamento),
-    status: row.status || 'pendente'
+    status: row.status || 'pendente',
+    user_id: seedUserId,
   }
   
   const { error } = await supabase
@@ -160,10 +172,11 @@ async function importDespesa(row) {
 }
 
 async function importCategoria(row) {
+  // Tabela public.categorias: (user_id, nome, tipo, cor?, ativo?)
   const categoria = {
     nome: row.nome,
-    tipo: row.tipo || 'despesa',
-    categoria: row.categoria || 'operacional'
+    tipo: (row.tipo || 'despesa').toLowerCase(),
+    user_id: seedUserId,
   }
   
   const { error } = await supabase
@@ -180,7 +193,9 @@ async function importCategoria(row) {
 async function importModalidade(row) {
   const modalidade = {
     nome: row.nome,
-    taxa_percentual: parseFloat(row.taxa_percentual) || 0
+    taxa_percentual: parseFloat(row.taxa_percentual) || 0,
+    data_efetivacao: formatDate(row.data_efetivacao) || '2025-01-01',
+    user_id: seedUserId,
   }
   
   const { error } = await supabase
@@ -198,7 +213,11 @@ async function importBanco(row) {
   const banco = {
     nome: row.nome,
     saldo_inicial: formatCurrency(row.saldo_inicial) || 0,
-    data_inicial: formatDate(row.data_inicial)
+    data_inicial: formatDate(row.data_inicial),
+    tipo: (row.tipo || 'conta_corrente'),
+    ativo: true,
+    saldo_atual: formatCurrency(row.saldo_inicial) || 0,
+    user_id: seedUserId,
   }
   
   const { error } = await supabase

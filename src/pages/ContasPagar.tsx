@@ -62,7 +62,7 @@ export default function ContasPagar() {
       // Carregar categorias de despesas e fornecedores primeiro
       const [categoriasResult, fornecedoresResult] = await Promise.all([
         supabase.from('categorias').select('*').eq('tipo', 'despesa').eq('user_id', user.id),
-        supabase.from('fornecedores').select('*')
+        supabase.from('fornecedores').select('*').eq('user_id', user.id)
       ]);
       console.log('Categorias de despesas do Supabase:', categoriasResult.data);
       console.log('Fornecedores do Supabase:', fornecedoresResult.data);
@@ -70,7 +70,7 @@ export default function ContasPagar() {
       setFornecedores(fornecedoresResult.data || []);
 
       // Carregar contas a pagar (tratar erro separadamente)
-      const contasResult = await supabase.from('contas_pagar').select('*');
+      const contasResult = await supabase.from('contas_pagar').select('*').eq('user_id', user.id);
       console.log('Dados retornados do Supabase:', contasResult.data, contasResult.error);
       if (!contasResult.error) setContasPagar(contasResult.data || []);
     } catch (error) {
@@ -91,6 +91,7 @@ export default function ContasPagar() {
       .from('bancos')
       .select('*')
       .eq('ativo', true)
+      .eq('user_id', user?.id)
       .order('nome');
     if (!error) setBancos(data || []);
   };
@@ -319,8 +320,10 @@ export default function ContasPagar() {
       });
       setIsDialogOpen(false);
       setFormData({
-        categoria_id: "",
+        descricao: "",
+        despesa_id: "",
         fornecedor_id: "",
+        banco_id: "",
         valor: "",
         data_vencimento: "",
         data_pagamento: "",
