@@ -36,8 +36,10 @@ export default function FluxoCaixa() {
   const { user } = useAuth();
 
   // 1. Adicionar estados para data de início e término:
-  const [dataInicio, setDataInicio] = useState("");
-  const [dataFim, setDataFim] = useState("");
+  // Inicializar com a data atual
+  const hoje = new Date().toISOString().split('T')[0];
+  const [dataInicio, setDataInicio] = useState(hoje);
+  const [dataFim, setDataFim] = useState(hoje);
 
   useEffect(() => {
     if (!user) return;
@@ -55,40 +57,7 @@ export default function FluxoCaixa() {
       const dataInicialStr = dataInicio || "";
       const dataFinalStr = dataFim || "";
 
-      // Buscar entradas (contas_receber) - todas as contas
-      let entradasQuery = supabase
-        .from('contas_receber')
-        .select('*')
-        .eq('user_id', user.id);
-      if (dataInicialStr) entradasQuery = entradasQuery.gte('data_recebimento', dataInicialStr);
-      if (dataFinalStr) entradasQuery = entradasQuery.lte('data_recebimento', dataFinalStr);
-      const { data: entradasData } = await entradasQuery;
-      
-      // Filtrar apenas as que têm data de recebimento (já foram recebidas)
-      const entradasFiltradas = (entradasData || []).filter(e => e.data_recebimento);
-      setEntradas(entradasFiltradas);
-      
-      console.log('Entradas carregadas:', entradasData);
-      console.log('Entradas filtradas (com data_recebimento):', entradasFiltradas);
-
-      // Buscar saídas (contas_pagar) - todas as contas
-      let saidasQuery = supabase
-        .from('contas_pagar')
-        .select('*')
-        .eq('user_id', user.id);
-      if (dataInicialStr) saidasQuery = saidasQuery.gte('data_vencimento', dataInicialStr);
-      if (dataFinalStr) saidasQuery = saidasQuery.lte('data_vencimento', dataFinalStr);
-      const { data: saidasData } = await saidasQuery;
-      
-      // Filtrar apenas as que têm banco_id (para aparecer no fluxo de caixa)
-      const saidasFiltradas = (saidasData || []).filter((s: any) => s.banco_id);
-      setSaidas(saidasFiltradas);
-      
-      console.log('Saídas carregadas:', saidasData);
-      console.log('Saídas filtradas (com data_pagamento):', saidasFiltradas);
-      console.log('Filtros aplicados:', { dataInicialStr, dataFinalStr });
-      
-      // Buscar transações
+      // Buscar transações (que incluem entradas e saídas)
       let transacoesQuery = (supabase as any)
         .from('transacoes')
         .select('*')
@@ -99,6 +68,9 @@ export default function FluxoCaixa() {
       setTransacoes(transacoesData || []);
       
       console.log('Transações carregadas:', transacoesData);
+      console.log('Filtros aplicados:', { dataInicialStr, dataFinalStr });
+      
+
       
       // Buscar ajustes de saldo usando any para contornar o problema de tipos
       const { data: ajustesData } = await (supabase as any)
@@ -117,26 +89,24 @@ export default function FluxoCaixa() {
       setLoading(false);
     };
     fetchAll();
-  }, [user, dataInicio, dataFim, bancoSelecionado]);
+  }, [user, dataInicio, dataFim]);
 
   // Montar movimentações agrupadas por banco
   const bancosComResumo = useMemo(() => {
     const resultado = bancos.map(banco => {
-      const entradasBanco = entradas.filter((e: any) => e.banco_id === banco.id);
-      const saidasBanco = saidas.filter((s: any) => s.banco_id === banco.id);
       const transacoesBanco = transacoes.filter((t: any) => t.banco_id === banco.id);
       
-      // Calcular totais das transações
-      const transacoesReceitas = transacoesBanco.filter((t: any) => t.tipo === 'receita');
-      const transacoesDespesas = transacoesBanco.filter((t: any) => t.tipo === 'despesa');
-      const transacoesTransferencias = transacoesBanco.filter((t: any) => t.tipo === 'transferencia');
+      // Calcular totais das transações (apenas efetivadas)
+      const transacoesReceitas = transacoesBanco.filter((t: any) => t.tipo === 'receita' && t.status === 'efetivada');
+      const transacoesDespesas = transacoesBanco.filter((t: any) => t.tipo === 'despesa' && t.status === 'efetivada');
+      const transacoesTransferencias = transacoesBanco.filter((t: any) => t.tipo === 'transferencia' && t.status === 'efetivada');
       
       const totalTransacoesReceitas = transacoesReceitas.reduce((sum, t) => sum + (t.valor || 0), 0);
       const totalTransacoesDespesas = transacoesDespesas.reduce((sum, t) => sum + (t.valor || 0), 0);
       const totalTransacoesTransferencias = transacoesTransferencias.reduce((sum, t) => sum + (t.valor || 0), 0);
       
-      const totalEntradas = entradasBanco.reduce((sum, e) => sum + (e.valor_liquido || e.valor || 0), 0) + totalTransacoesReceitas;
-      const totalSaidas = saidasBanco.reduce((sum, s) => sum + (s.valor || 0), 0) + totalTransacoesDespesas;
+      const totalEntradas = totalTransacoesReceitas;
+      const totalSaidas = totalTransacoesDespesas;
       
       // Calcular ajustes de saldo para este banco
       const ajustesBanco = ajustesSaldo.filter(a => a.banco_id === banco.id);
@@ -155,8 +125,6 @@ export default function FluxoCaixa() {
           totalSaidas_periodo: totalSaidas,
           totalAjustes: totalAjustes,
           saldo_final_calculado: saldoReal,
-          entradas_count: entradasBanco.length,
-          saidas_count: saidasBanco.length,
           transacoes_count: transacoesBanco.length,
           transacoes_receitas: totalTransacoesReceitas,
           transacoes_despesas: totalTransacoesDespesas,
@@ -179,8 +147,6 @@ export default function FluxoCaixa() {
         totalSaidas_periodo: totalSaidas,
         totalAjustes: totalAjustes,
         saldo_final: saldoReal,
-        entradas_count: entradasBanco.length,
-        saidas_count: saidasBanco.length,
         transacoes_count: transacoesBanco.length,
         transacoes_receitas: totalTransacoesReceitas,
         transacoes_despesas: totalTransacoesDespesas,
