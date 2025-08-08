@@ -445,13 +445,13 @@ export default function AjustesSaldo() {
               Novo Ajuste
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>Novo Ajuste de Saldo</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="banco">Banco</Label>
+                <Label htmlFor="banco">Banco *</Label>
                 <Select value={selectedBanco} onValueChange={handleBancoChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione um banco" />
@@ -459,7 +459,7 @@ export default function AjustesSaldo() {
                   <SelectContent>
                     {bancos.map(banco => (
                       <SelectItem key={banco.id} value={banco.id}>
-                        {banco.nome} - {formatCurrency(banco.saldo_atual)}
+                        {banco.nome} - Saldo: {formatCurrency(banco.saldo_atual)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -478,7 +478,7 @@ export default function AjustesSaldo() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="saldo-novo">Novo Saldo</Label>
+                    <Label htmlFor="saldo-novo">Novo Saldo *</Label>
                     <Input
                       id="saldo-novo"
                       type="number"
@@ -531,7 +531,7 @@ export default function AjustesSaldo() {
                 <Button variant="outline" onClick={() => setDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button onClick={handleSubmit} disabled={submitting}>
+                <Button onClick={handleSubmit} disabled={submitting} className="w-full sm:w-auto">
                   {submitting ? "Salvando..." : "Confirmar Ajuste"}
                 </Button>
               </div>
