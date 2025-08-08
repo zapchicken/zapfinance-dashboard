@@ -459,61 +459,68 @@ export default function AjustesSaldo() {
                   <SelectContent>
                     {bancos.map(banco => (
                       <SelectItem key={banco.id} value={banco.id}>
-                        {banco.nome} - Saldo: {formatCurrency(banco.saldo_atual)}
+                        {banco.nome}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {selectedBanco && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="saldo-atual">Saldo Atual</Label>
-                    <Input
-                      id="saldo-atual"
-                      value={formatCurrency(saldoAtual)}
-                      disabled
-                      className="bg-muted"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="saldo-novo">Novo Saldo *</Label>
-                    <Input
-                      id="saldo-novo"
-                      type="number"
-                      step="0.01"
-                      value={saldoNovo}
-                      onChange={(e) => setSaldoNovo(e.target.value)}
-                      placeholder="0,00"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {selectedBanco && saldoNovo && (
-                <Alert>
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    Diferença: {formatCurrency(parseFloat(saldoNovo) - saldoAtual)}
-                  </AlertDescription>
-                </Alert>
-              )}
-
               <div>
-                <Label htmlFor="motivo">Motivo do Ajuste *</Label>
-                <Select value={motivo} onValueChange={setMotivo}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o motivo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="conciliacao">Conciliação Bancária</SelectItem>
-                    <SelectItem value="erro_sistema">Erro do Sistema</SelectItem>
-                    <SelectItem value="taxa_nao_registrada">Taxa Não Registrada</SelectItem>
-                    <SelectItem value="transferencia_nao_registrada">Transferência Não Registrada</SelectItem>
-                    <SelectItem value="outros">Outros</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="descricao">Descrição *</Label>
+                <Input
+                  id="descricao"
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                  placeholder="Ex: Ajuste de conciliação bancária"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="saldo-atual">Saldo Atual</Label>
+                  <Input
+                    id="saldo-atual"
+                    value={formatCurrency(saldoAtual)}
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="saldo-novo">Novo Saldo *</Label>
+                  <Input
+                    id="saldo-novo"
+                    type="number"
+                    step="0.01"
+                    value={saldoNovo}
+                    onChange={(e) => setSaldoNovo(e.target.value)}
+                    placeholder="0,00"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="data">Data *</Label>
+                  <Input
+                    id="data"
+                    type="date"
+                    value={new Date().toISOString().split('T')[0]}
+                    disabled
+                    className="bg-muted"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="status">Status *</Label>
+                  <Select value="efetivada" disabled>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="efetivada">Efetivada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div>
