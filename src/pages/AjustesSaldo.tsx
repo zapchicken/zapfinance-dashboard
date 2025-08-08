@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -417,6 +417,87 @@ export default function AjustesSaldo() {
     return true;
   });
 
+  // Calcular saldos por banco considerando o período dos filtros
+  const bancosComSaldoCalculado = useMemo(() => {
+    return bancos.map(banco => {
+      // Filtrar transações deste banco no período
+      const transacoesBanco = transacoes.filter(t => {
+        if (t.banco_id !== banco.id) return false;
+        
+        // Se não há filtros de data, considerar todas as transações
+        if (!dataInicial && !dataFinal) return true;
+        
+        const dataTransacao = new Date(t.data_transacao);
+        
+        // Filtro por data inicial
+        if (dataInicial) {
+          const dataInicialObj = new Date(dataInicial);
+          dataInicialObj.setHours(0, 0, 0, 0);
+          if (dataTransacao < dataInicialObj) return false;
+        }
+        
+        // Filtro por data final
+        if (dataFinal) {
+          const dataFinalObj = new Date(dataFinal);
+          dataFinalObj.setHours(23, 59, 59, 999);
+          if (dataTransacao > dataFinalObj) return false;
+        }
+        
+        return true;
+      });
+
+      // Calcular movimentações do período
+      const totalReceitas = transacoesBanco
+        .filter(t => t.tipo === 'receita' && t.status === 'efetivada')
+        .reduce((sum, t) => sum + t.valor, 0);
+      
+      const totalDespesas = transacoesBanco
+        .filter(t => t.tipo === 'despesa' && t.status === 'efetivada')
+        .reduce((sum, t) => sum + t.valor, 0);
+
+      // Filtrar ajustes de saldo deste banco no período
+      const ajustesBanco = ajustes.filter(a => {
+        if (a.banco_id !== banco.id) return false;
+        
+        // Se não há filtros de data, considerar todos os ajustes
+        if (!dataInicial && !dataFinal) return true;
+        
+        const dataAjuste = new Date(a.data_ajuste);
+        
+        // Filtro por data inicial
+        if (dataInicial) {
+          const dataInicialObj = new Date(dataInicial);
+          dataInicialObj.setHours(0, 0, 0, 0);
+          if (dataAjuste < dataInicialObj) return false;
+        }
+        
+        // Filtro por data final
+        if (dataFinal) {
+          const dataFinalObj = new Date(dataFinal);
+          dataFinalObj.setHours(23, 59, 59, 999);
+          if (dataAjuste > dataFinalObj) return false;
+        }
+        
+        return true;
+      });
+
+      const totalAjustes = ajustesBanco.reduce((sum, a) => sum + a.diferenca, 0);
+
+      // Calcular saldo do período
+      const saldoPeriodo = banco.saldo_inicial + totalReceitas - totalDespesas + totalAjustes;
+
+      return {
+        ...banco,
+        saldo_calculado: saldoPeriodo,
+        total_receitas_periodo: totalReceitas,
+        total_despesas_periodo: totalDespesas,
+        total_ajustes_periodo: totalAjustes,
+        transacoes_count: transacoesBanco.length,
+        ajustes_count: ajustesBanco.length
+      };
+    });
+  }, [bancos, transacoes, ajustes, dataInicial, dataFinal]);
+
   // Debug para verificar transações
   console.log('🔍 DEBUG - Transações:', {
     total: transacoes.length,
@@ -424,6 +505,14 @@ export default function AjustesSaldo() {
     filtroAtual: selectedBancoFilter,
     dataInicial,
     dataFinal,
+    bancosCalculados: bancosComSaldoCalculado.map(b => ({
+      nome: b.nome,
+      saldo_inicial: b.saldo_inicial,
+      saldo_calculado: b.saldo_calculado,
+      total_receitas: b.total_receitas_periodo,
+      total_despesas: b.total_despesas_periodo,
+      total_ajustes: b.total_ajustes_periodo
+    })),
     transacoes: transacoes.map(t => ({
       id: t.id,
       descricao: t.descricao,
@@ -583,31 +672,51 @@ export default function AjustesSaldo() {
         </Dialog>
       </div>
 
-      {/* Resumo dos Bancos */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {bancos.map(banco => (
-          <Card key={banco.id}>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Building2 className="h-5 w-5" />
-                {banco.nome}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Saldo Atual:</span>
-                  <span className="font-bold">{formatCurrency(banco.saldo_atual)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Saldo Inicial:</span>
-                  <span className="text-sm">{formatCurrency(banco.saldo_inicial)}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+             {/* Resumo dos Bancos */}
+       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+         {bancosComSaldoCalculado.map(banco => (
+           <Card key={banco.id}>
+             <CardHeader className="pb-2">
+               <CardTitle className="flex items-center gap-2 text-lg">
+                 <Building2 className="h-5 w-5" />
+                 {banco.nome}
+               </CardTitle>
+             </CardHeader>
+             <CardContent>
+               <div className="space-y-2">
+                 <div className="flex justify-between">
+                   <span className="text-sm text-muted-foreground">
+                     {dataInicial || dataFinal ? "Saldo do Período:" : "Saldo Atual:"}
+                   </span>
+                   <span className="font-bold">{formatCurrency(banco.saldo_calculado)}</span>
+                 </div>
+                 <div className="flex justify-between">
+                   <span className="text-sm text-muted-foreground">Saldo Inicial:</span>
+                   <span className="text-sm">{formatCurrency(banco.saldo_inicial)}</span>
+                 </div>
+                 {(dataInicial || dataFinal) && (
+                   <>
+                     <div className="flex justify-between">
+                       <span className="text-sm text-muted-foreground">Receitas:</span>
+                       <span className="text-sm text-green-600">+{formatCurrency(banco.total_receitas_periodo)}</span>
+                     </div>
+                     <div className="flex justify-between">
+                       <span className="text-sm text-muted-foreground">Despesas:</span>
+                       <span className="text-sm text-red-600">-{formatCurrency(banco.total_despesas_periodo)}</span>
+                     </div>
+                     <div className="flex justify-between">
+                       <span className="text-sm text-muted-foreground">Ajustes:</span>
+                       <span className={`text-sm ${banco.total_ajustes_periodo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                         {banco.total_ajustes_periodo >= 0 ? '+' : ''}{formatCurrency(banco.total_ajustes_periodo)}
+                       </span>
+                     </div>
+                   </>
+                 )}
+               </div>
+             </CardContent>
+           </Card>
+         ))}
+       </div>
 
       {/* Transações */}
       <Card>
