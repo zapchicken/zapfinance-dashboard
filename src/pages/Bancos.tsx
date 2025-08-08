@@ -243,7 +243,7 @@ export default function Bancos() {
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este banco?")) return;
     
-    const { error } = await supabase.from('bancos').delete().eq('id', id);
+    const { error } = await supabase.from('bancos').delete().eq('id', id).eq('user_id', user.id);
     
     if (!error) {
       fetchBancos();

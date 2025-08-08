@@ -58,7 +58,7 @@ export default function Receitas() {
         nome: formData.nome,
         taxa_percentual: taxa,
         data_efetivacao: formData.data_efetivacao || null
-      }).eq('id', editId);
+      }).eq('id', editId).eq('user_id', user.id);
       if (!error) {
         setIsDialogOpen(false);
         setFormData({ nome: '', taxa_percentual: '', data_efetivacao: '' });
@@ -97,7 +97,7 @@ export default function Receitas() {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Tem certeza que deseja excluir esta modalidade?')) return;
-    const { error } = await supabase.from('modalidades_receita').delete().eq('id', id);
+    const { error } = await supabase.from('modalidades_receita').delete().eq('id', id).eq('user_id', user.id);
     if (!error) {
       fetchModalidades();
     } else {

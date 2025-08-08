@@ -141,6 +141,7 @@ export default function AjustesSaldo() {
         .from('bancos')
         .select('*')
         .eq('ativo', true)
+        .eq('user_id', user.id)
         .order('nome');
       
       if (bancosError) {
@@ -168,6 +169,7 @@ export default function AjustesSaldo() {
           *,
           banco: bancos(nome)
         `)
+        .eq('user_id', user.id)
         .order('data_ajuste', { ascending: false });
       
       if (ajustesError) {
@@ -188,6 +190,7 @@ export default function AjustesSaldo() {
           categoria: categorias(nome),
           fornecedor: fornecedores(nome)
         `)
+        .eq('user_id', user.id)
         .order('data_transacao', { ascending: false });
       
       if (transacoesError) {
