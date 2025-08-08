@@ -18,9 +18,10 @@ export default function Relatorios() {
   const [loading, setLoading] = useState(false);
   const [dados, setDados] = useState<any>(null);
   const [relatorioComparativo, setRelatorioComparativo] = useState<any>(null);
-  const [mesesComparacao, setMesesComparacao] = useState(6); // Últimos 6 meses
+  const [mesesComparacao, setMesesComparacao] = useState(3); // Últimos 3 meses
   const [detalhamento, setDetalhamento] = useState<any>(null);
   const [top5, setTop5] = useState<any>(null);
+  const [relatorioDRE, setRelatorioDRE] = useState<any>(null);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -68,6 +69,9 @@ export default function Relatorios() {
       
       // Gerar Top 5
       gerarTop5(receitas || [], despesas || [], categorias || []);
+      
+      // Gerar relatório DRE visual
+      gerarRelatorioDRE(receitas || [], despesas || [], categorias || []);
     } catch (error) {
       console.error('Erro ao buscar dados:', error);
       toast({
@@ -334,6 +338,106 @@ export default function Relatorios() {
     });
   };
 
+  const gerarRelatorioDRE = (receitas: any[], despesas: any[], categorias: any[]) => {
+    const hoje = new Date();
+    const meses = [];
+    
+    // Gerar array dos últimos meses (configurável)
+    for (let i = mesesComparacao - 1; i >= 0; i--) {
+      const data = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+      meses.push({
+        ano: data.getFullYear(),
+        mes: data.getMonth(),
+        nome: data.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+        inicio: new Date(data.getFullYear(), data.getMonth(), 1),
+        fim: new Date(data.getFullYear(), data.getMonth() + 1, 0)
+      });
+    }
+
+    const dadosMensais = meses.map((mes, index) => {
+      // Filtrar dados do mês
+      const receitasMes = receitas.filter(r => {
+        const dataVenc = new Date(r.data_vencimento);
+        return dataVenc >= mes.inicio && dataVenc <= mes.fim;
+      });
+
+      const despesasMes = despesas.filter(d => {
+        const dataVenc = new Date(d.data_vencimento);
+        return dataVenc >= mes.inicio && dataVenc <= mes.fim;
+      });
+
+      // Calcular indicadores do DRE
+      const faturamento = receitasMes.reduce((sum, r) => sum + (r.valor || 0), 0);
+      
+      // Categorizar despesas
+      const categoriasFixasIds = categorias.filter(c => c.categoria === 'Despesa Fixa').map(c => c.id);
+      const categoriasInvestimentoIds = categorias.filter(c => c.categoria === 'Investimento').map(c => c.id);
+      
+      const custoVariavel = despesasMes
+        .filter(d => !categoriasFixasIds.includes(d.categoria_id) && !categoriasInvestimentoIds.includes(d.categoria_id))
+        .reduce((sum, d) => sum + (d.valor || 0), 0);
+      
+      const despesaFixa = despesasMes
+        .filter(d => categoriasFixasIds.includes(d.categoria_id))
+        .reduce((sum, d) => sum + (d.valor || 0), 0);
+      
+      const investimentos = despesasMes
+        .filter(d => categoriasInvestimentoIds.includes(d.categoria_id))
+        .reduce((sum, d) => sum + (d.valor || 0), 0);
+
+      const margemContribuicao = faturamento - custoVariavel;
+      const lucroOperacionalAntesInvestimentos = margemContribuicao - despesaFixa;
+      const lucroOperacional = lucroOperacionalAntesInvestimentos - investimentos;
+
+      // Movimentações não operacionais (simulado)
+      const receitaNaoOperacional = receitasMes
+        .filter(r => r.descricao?.toLowerCase().includes('não operacional') || r.descricao?.toLowerCase().includes('nao operacional'))
+        .reduce((sum, r) => sum + (r.valor || 0), 0);
+      
+      const despesaNaoOperacional = despesasMes
+        .filter(d => d.descricao?.toLowerCase().includes('não operacional') || d.descricao?.toLowerCase().includes('nao operacional'))
+        .reduce((sum, d) => sum + (d.valor || 0), 0);
+
+      const movimentacoesNaoOperacionais = receitaNaoOperacional - despesaNaoOperacional;
+      const resultadoLiquido = lucroOperacional + movimentacoesNaoOperacionais;
+
+      return {
+        mes: mes.nome,
+        faturamento,
+        custoVariavel,
+        margemContribuicao,
+        despesaFixa,
+        lucroOperacionalAntesInvestimentos,
+        investimentos,
+        lucroOperacional,
+        receitaNaoOperacional,
+        despesaNaoOperacional,
+        movimentacoesNaoOperacionais,
+        resultadoLiquido
+      };
+    });
+
+    // Calcular análises vertical e horizontal
+    const relatorioCompleto = {
+      meses: dadosMensais,
+      indicadores: [
+        { nome: 'Faturamento', chave: 'faturamento' },
+        { nome: 'Custo Variável', chave: 'custoVariavel' },
+        { nome: 'Margem de Contribuição', chave: 'margemContribuicao' },
+        { nome: 'Despesa Fixa', chave: 'despesaFixa' },
+        { nome: 'LUCRO OPERACIONAL ANTES DOS INVESTIMENTOS', chave: 'lucroOperacionalAntesInvestimentos' },
+        { nome: 'Investimentos', chave: 'investimentos' },
+        { nome: 'LUCRO OPERACIONAL', chave: 'lucroOperacional' },
+        { nome: 'MOVIMENTAÇÕES NÃO OPERACIONAIS', chave: 'movimentacoesNaoOperacionais' },
+        { nome: 'Receita não Operacional', chave: 'receitaNaoOperacional', indentado: true },
+        { nome: 'Despesa não operacional', chave: 'despesaNaoOperacional', indentado: true },
+        { nome: 'RESULTADO LÍQUIDO', chave: 'resultadoLiquido', destaque: true }
+      ]
+    };
+
+    setRelatorioDRE(relatorioCompleto);
+  };
+
   const calcularDadosRelatorio = () => {
     if (!dados) return null;
 
@@ -539,6 +643,74 @@ export default function Relatorios() {
       title: "Sucesso",
       description: "Top 5 exportado com sucesso!",
     });
+  };
+
+  const exportarRelatorioDRE = () => {
+    if (!relatorioDRE) {
+      toast({
+        title: "Aviso",
+        description: "Nenhum relatório DRE disponível para exportar",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const workbook = XLSX.utils.book_new();
+      
+      // Criar dados para o Excel
+      const dadosExcel = [];
+      
+      // Cabeçalho
+      const cabecalho = ['Indicadores'];
+      relatorioDRE.meses.forEach(mes => {
+        cabecalho.push(mes.mes, 'A/V (%)', 'A/H (%)');
+      });
+      dadosExcel.push(cabecalho);
+      
+      // Dados dos indicadores
+      relatorioDRE.indicadores.forEach(indicator => {
+        const linha = [indicator.nome];
+        
+        relatorioDRE.meses.forEach((mes, index) => {
+          const valor = mes[indicator.chave] || 0;
+          const percentualAV = mes.faturamento > 0 ? (valor / mes.faturamento) * 100 : 0;
+          
+          // Calcular variação horizontal (A/H)
+          let percentualAH = 0;
+          if (index > 0) {
+            const valorAnterior = relatorioDRE.meses[index - 1][indicator.chave] || 0;
+            percentualAH = valorAnterior !== 0 ? ((valor - valorAnterior) / valorAnterior) * 100 : 0;
+          }
+          
+          linha.push(
+            valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+            percentualAV.toFixed(2),
+            index === 0 ? '' : percentualAH.toFixed(2)
+          );
+        });
+        
+        dadosExcel.push(linha);
+      });
+      
+      const worksheet = XLSX.utils.aoa_to_sheet(dadosExcel);
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Relatório DRE');
+      
+      // Salvar arquivo
+      XLSX.writeFile(workbook, `relatorio_dre_${new Date().toISOString().split('T')[0]}.xlsx`);
+      
+      toast({
+        title: "Sucesso",
+        description: "Relatório DRE exportado com sucesso!",
+      });
+    } catch (error) {
+      console.error('Erro ao exportar relatório DRE:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao exportar relatório DRE",
+        variant: "destructive"
+      });
+    }
   };
 
   const exportarRelatorioComparativo = () => {
@@ -920,6 +1092,114 @@ export default function Relatorios() {
               </Button>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Relatório DRE Visual */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Relatório DRE - Análise Comparativa
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <Select value={mesesComparacao.toString()} onValueChange={(value) => setMesesComparacao(parseInt(value))}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="3">3 meses</SelectItem>
+                  <SelectItem value="6">6 meses</SelectItem>
+                  <SelectItem value="12">12 meses</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button onClick={exportarRelatorioDRE} variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Exportar
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center items-center h-32">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : relatorioDRE ? (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse border border-gray-300">
+                <thead>
+                  <tr className="bg-yellow-100">
+                    <th className="border border-gray-300 p-2 text-left font-bold">Indicadores</th>
+                    {relatorioDRE.meses.map((mes: any, index: number) => (
+                      <th key={index} colSpan={3} className="border border-gray-300 p-2 text-center font-bold">
+                        {mes.mes}
+                      </th>
+                    ))}
+                  </tr>
+                  <tr className="bg-gray-50">
+                    <th className="border border-gray-300 p-2 text-left">Indicadores</th>
+                    {relatorioDRE.meses.map((mes: any, index: number) => (
+                      <React.Fragment key={index}>
+                        <th className="border border-gray-300 p-2 text-center text-sm">Valores</th>
+                        <th className="border border-gray-300 p-2 text-center text-sm">A/V (%)</th>
+                        <th className="border border-gray-300 p-2 text-center text-sm">A/H (%)</th>
+                      </React.Fragment>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {relatorioDRE.indicadores.map((indicator: any, indicatorIndex: number) => (
+                    <tr key={indicatorIndex} className={indicator.destaque ? 'bg-blue-50 font-bold' : ''}>
+                      <td className={`border border-gray-300 p-2 ${indicator.indentado ? 'pl-6' : ''} ${indicator.destaque ? 'font-bold' : ''}`}>
+                        {indicator.nome}
+                      </td>
+                      {relatorioDRE.meses.map((mes: any, mesIndex: number) => {
+                        const valor = mes[indicator.chave] || 0;
+                        const percentualAV = mes.faturamento > 0 ? (valor / mes.faturamento) * 100 : 0;
+                        
+                        // Calcular variação horizontal (A/H)
+                        let percentualAH = 0;
+                        let tendenciaAH = '';
+                        if (mesIndex > 0) {
+                          const valorAnterior = relatorioDRE.meses[mesIndex - 1][indicator.chave] || 0;
+                          percentualAH = valorAnterior !== 0 ? ((valor - valorAnterior) / valorAnterior) * 100 : 0;
+                          
+                          // Determinar tendência
+                          if (percentualAH > 5) {
+                            tendenciaAH = '🟢'; // Verde para aumento favorável
+                          } else if (percentualAH > -5) {
+                            tendenciaAH = '🟠'; // Laranja para estável
+                          } else {
+                            tendenciaAH = '🔴'; // Vermelho para diminuição desfavorável
+                          }
+                        }
+                        
+                        return (
+                          <React.Fragment key={mesIndex}>
+                            <td className={`border border-gray-300 p-2 text-right ${valor < 0 ? 'text-red-600' : ''}`}>
+                              {formatCurrency(valor)}
+                            </td>
+                            <td className="border border-gray-300 p-2 text-center text-sm">
+                              {percentualAV.toFixed(2)}%
+                            </td>
+                            <td className="border border-gray-300 p-2 text-center text-sm">
+                              {mesIndex === 0 ? '' : `${tendenciaAH} ${percentualAH.toFixed(2)}%`}
+                            </td>
+                          </React.Fragment>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              Nenhum dado disponível para o relatório DRE
+            </div>
+          )}
         </CardContent>
       </Card>
 
