@@ -39,16 +39,19 @@ export default function Relatorios() {
       const { data: receitas } = await supabase
         .from('contas_receber')
         .select('*')
+        .eq('user_id', user.id)
         .order('data_vencimento');
 
       const { data: despesas } = await supabase
         .from('contas_pagar')
         .select('*')
+        .eq('user_id', user.id)
         .order('data_vencimento');
 
       const { data: categorias } = await supabase
         .from('categorias')
         .select('*')
+        .eq('user_id', user.id)
         .eq('ativo', true);
 
       setDados({ receitas: receitas || [], despesas: despesas || [], categorias: categorias || [] });
