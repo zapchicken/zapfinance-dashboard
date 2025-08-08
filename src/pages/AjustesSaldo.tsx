@@ -148,8 +148,17 @@ export default function AjustesSaldo() {
         throw bancosError;
       }
       
-      console.log('✅ Bancos carregados:', bancosData);
-      setBancos(bancosData || []);
+             console.log('✅ Bancos carregados:', bancosData);
+       console.log('🔍 DEBUG - Detalhes dos bancos:', bancosData?.map(b => ({
+         id: b.id,
+         nome: b.nome,
+         user_id: b.user_id,
+         saldo_inicial: b.saldo_inicial,
+         saldo_atual: b.saldo_atual,
+         ativo: b.ativo,
+         created_at: b.created_at
+       })));
+       setBancos(bancosData || []);
 
       // Buscar ajustes
       console.log('📊 Buscando ajustes...');
