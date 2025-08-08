@@ -19,6 +19,7 @@ import Bancos from "./pages/Bancos";
 import Relatorios from "./pages/Relatorios";
 import Configuracoes from "./pages/Configuracoes";
 import AjustesSaldo from "./pages/AjustesSaldo";
+import TestTransacoes from "./pages/TestTransacoes";
 import NotFound from "./pages/NotFound";
 
 function ProtectedLayout() {
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="/fornecedores" element={<Fornecedores />} />
               <Route path="/bancos" element={<Bancos />} />
               <Route path="/ajustes-saldo" element={<AjustesSaldo />} />
+              <Route path="/test-transacoes" element={<TestTransacoes />} />
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/configuracoes" element={<Configuracoes />} />
             </Route>
