@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, FileText, TrendingUp, DollarSign, BarChart3, Calendar, Filter, Download, ArrowUp, ArrowDown, Circle } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -10,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 
 export default function Relatorios() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [periodo, setPeriodo] = useState("mes-atual");
   const [tipo, setTipo] = useState("todos");
   const [formato, setFormato] = useState("excel");
@@ -28,8 +30,10 @@ export default function Relatorios() {
   };
 
   useEffect(() => {
-    fetchDados();
-  }, []);
+    if (user) {
+      fetchDados();
+    }
+  }, [user]);
 
   const fetchDados = async () => {
     try {
