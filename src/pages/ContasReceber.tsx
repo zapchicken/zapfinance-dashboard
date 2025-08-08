@@ -393,7 +393,7 @@ export default function ContasReceber() {
   const handleDelete = async (id: string) => {
     if (!user) return;
     if (!window.confirm('Tem certeza que deseja excluir esta conta?')) return;
-    const { error } = await supabase.from('contas_receber').delete().eq('id', id);
+    const { error } = await supabase.from('contas_receber').delete().eq('id', id).eq('user_id', user.id);
     if (!error) {
       queryClient.invalidateQueries({ queryKey: ['receitas'] });
     } else {

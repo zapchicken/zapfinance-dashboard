@@ -345,7 +345,7 @@ export default function ContasPagar() {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase.from('contas_pagar').delete().eq('id', id);
+      const { error } = await supabase.from('contas_pagar').delete().eq('id', id).eq('user_id', user.id);
       
       if (error) throw error;
 
@@ -372,7 +372,7 @@ export default function ContasPagar() {
     const { error } = await supabase.from('contas_pagar').update({
       status: 'pago',
       data_pagamento: dataPagamento
-    }).eq('id', conta.id);
+    }).eq('id', conta.id).eq('user_id', user.id);
     if (!error) {
       fetchData();
       toast({ title: 'Sucesso', description: 'Conta marcada como paga!' });
