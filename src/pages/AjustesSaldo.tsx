@@ -392,6 +392,19 @@ export default function AjustesSaldo() {
     selectedBancoFilter === "todos" || t.banco_id === selectedBancoFilter
   );
 
+  // Debug para verificar transações
+  console.log('🔍 DEBUG - Transações:', {
+    total: transacoes.length,
+    filtradas: transacoesFiltradas.length,
+    filtroAtual: selectedBancoFilter,
+    transacoes: transacoes.map(t => ({
+      id: t.id,
+      descricao: t.descricao,
+      banco_id: t.banco_id,
+      banco_nome: t.banco?.nome
+    }))
+  });
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -597,7 +610,11 @@ export default function AjustesSaldo() {
           <div className="space-y-4">
             {transacoesFiltradas.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                Nenhuma transação encontrada
+                <div>Nenhuma transação encontrada</div>
+                <div className="text-sm mt-2">
+                  Total de transações: {transacoes.length} | 
+                  Filtro: {selectedBancoFilter === "todos" ? "Todos os bancos" : "Banco específico"}
+                </div>
               </div>
             ) : (
               <div className="overflow-x-auto">
