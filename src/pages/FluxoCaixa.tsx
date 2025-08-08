@@ -57,7 +57,40 @@ export default function FluxoCaixa() {
       const dataInicialStr = dataInicio || "";
       const dataFinalStr = dataFim || "";
 
-      // Buscar transações (que incluem entradas e saídas)
+      // Buscar entradas (contas_receber) - todas as contas
+      let entradasQuery = supabase
+        .from('contas_receber')
+        .select('*')
+        .eq('user_id', user.id);
+      if (dataInicialStr) entradasQuery = entradasQuery.gte('data_recebimento', dataInicialStr);
+      if (dataFinalStr) entradasQuery = entradasQuery.lte('data_recebimento', dataFinalStr);
+      const { data: entradasData } = await entradasQuery;
+      
+      // Filtrar apenas as que têm data de recebimento (já foram recebidas)
+      const entradasFiltradas = (entradasData || []).filter(e => e.data_recebimento);
+      setEntradas(entradasFiltradas);
+      
+      console.log('Entradas carregadas:', entradasData);
+      console.log('Entradas filtradas (com data_recebimento):', entradasFiltradas);
+
+      // Buscar saídas (contas_pagar) - todas as contas
+      let saidasQuery = supabase
+        .from('contas_pagar')
+        .select('*')
+        .eq('user_id', user.id);
+      if (dataInicialStr) saidasQuery = saidasQuery.gte('data_vencimento', dataInicialStr);
+      if (dataFinalStr) saidasQuery = saidasQuery.lte('data_vencimento', dataFinalStr);
+      const { data: saidasData } = await saidasQuery;
+      
+      // Filtrar apenas as que têm banco_id (para aparecer no fluxo de caixa)
+      const saidasFiltradas = (saidasData || []).filter((s: any) => s.banco_id);
+      setSaidas(saidasFiltradas);
+      
+      console.log('Saídas carregadas:', saidasData);
+      console.log('Saídas filtradas (com data_pagamento):', saidasFiltradas);
+      console.log('Filtros aplicados:', { dataInicialStr, dataFinalStr });
+      
+      // Buscar transações
       let transacoesQuery = (supabase as any)
         .from('transacoes')
         .select('*')
@@ -68,7 +101,6 @@ export default function FluxoCaixa() {
       setTransacoes(transacoesData || []);
       
       console.log('Transações carregadas:', transacoesData);
-      console.log('Filtros aplicados:', { dataInicialStr, dataFinalStr });
       
 
       
@@ -89,24 +121,26 @@ export default function FluxoCaixa() {
       setLoading(false);
     };
     fetchAll();
-  }, [user, dataInicio, dataFim]);
+  }, [user, dataInicio, dataFim, bancoSelecionado]);
 
   // Montar movimentações agrupadas por banco
   const bancosComResumo = useMemo(() => {
     const resultado = bancos.map(banco => {
+      const entradasBanco = entradas.filter((e: any) => e.banco_id === banco.id);
+      const saidasBanco = saidas.filter((s: any) => s.banco_id === banco.id);
       const transacoesBanco = transacoes.filter((t: any) => t.banco_id === banco.id);
       
-      // Calcular totais das transações (apenas efetivadas)
-      const transacoesReceitas = transacoesBanco.filter((t: any) => t.tipo === 'receita' && t.status === 'efetivada');
-      const transacoesDespesas = transacoesBanco.filter((t: any) => t.tipo === 'despesa' && t.status === 'efetivada');
-      const transacoesTransferencias = transacoesBanco.filter((t: any) => t.tipo === 'transferencia' && t.status === 'efetivada');
+      // Calcular totais das transações
+      const transacoesReceitas = transacoesBanco.filter((t: any) => t.tipo === 'receita');
+      const transacoesDespesas = transacoesBanco.filter((t: any) => t.tipo === 'despesa');
+      const transacoesTransferencias = transacoesBanco.filter((t: any) => t.tipo === 'transferencia');
       
       const totalTransacoesReceitas = transacoesReceitas.reduce((sum, t) => sum + (t.valor || 0), 0);
       const totalTransacoesDespesas = transacoesDespesas.reduce((sum, t) => sum + (t.valor || 0), 0);
       const totalTransacoesTransferencias = transacoesTransferencias.reduce((sum, t) => sum + (t.valor || 0), 0);
       
-      const totalEntradas = totalTransacoesReceitas;
-      const totalSaidas = totalTransacoesDespesas;
+      const totalEntradas = entradasBanco.reduce((sum, e) => sum + (e.valor_liquido || e.valor || 0), 0) + totalTransacoesReceitas;
+      const totalSaidas = saidasBanco.reduce((sum, s) => sum + (s.valor || 0), 0) + totalTransacoesDespesas;
       
       // Calcular ajustes de saldo para este banco
       const ajustesBanco = ajustesSaldo.filter(a => a.banco_id === banco.id);
@@ -125,6 +159,8 @@ export default function FluxoCaixa() {
           totalSaidas_periodo: totalSaidas,
           totalAjustes: totalAjustes,
           saldo_final_calculado: saldoReal,
+          entradas_count: entradasBanco.length,
+          saidas_count: saidasBanco.length,
           transacoes_count: transacoesBanco.length,
           transacoes_receitas: totalTransacoesReceitas,
           transacoes_despesas: totalTransacoesDespesas,
@@ -147,6 +183,8 @@ export default function FluxoCaixa() {
         totalSaidas_periodo: totalSaidas,
         totalAjustes: totalAjustes,
         saldo_final: saldoReal,
+        entradas_count: entradasBanco.length,
+        saidas_count: saidasBanco.length,
         transacoes_count: transacoesBanco.length,
         transacoes_receitas: totalTransacoesReceitas,
         transacoes_despesas: totalTransacoesDespesas,
@@ -382,6 +420,64 @@ export default function FluxoCaixa() {
                 </div>
               </div>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Transações por Banco */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Transações por Banco
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {bancosComResumo.map((banco) => {
+              const transacoesBanco = transacoes.filter((t: any) => t.banco_id === banco.id);
+              
+              return (
+                <div key={banco.id} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-lg">{banco.nome}</h3>
+                    <div className="text-sm text-muted-foreground">
+                      {transacoesBanco.length} transação{transacoesBanco.length !== 1 ? 'ões' : ''}
+                    </div>
+                  </div>
+                  
+                  {transacoesBanco.length === 0 ? (
+                    <div className="text-center py-4 text-muted-foreground">
+                      Nenhuma transação no período
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {transacoesBanco.map((transacao: any) => (
+                        <div key={transacao.id} className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                          <div className="flex-1">
+                            <div className="font-medium">{transacao.descricao}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {new Date(transacao.data_transacao).toLocaleDateString('pt-BR')} • {transacao.tipo}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className={`font-bold ${
+                              transacao.tipo === 'receita' ? 'text-green-600' : 
+                              transacao.tipo === 'despesa' ? 'text-red-600' : 'text-blue-600'
+                            }`}>
+                              {transacao.tipo === 'despesa' ? '-' : '+'}{formatCurrency(transacao.valor)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {transacao.status}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>

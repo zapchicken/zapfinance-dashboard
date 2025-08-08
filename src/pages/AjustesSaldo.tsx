@@ -455,13 +455,13 @@ export default function AjustesSaldo() {
         return true;
       });
 
-      // Calcular movimentações do período
+      // Calcular movimentações do período (incluindo todas as transações, não apenas efetivadas)
       const totalReceitas = transacoesBanco
-        .filter(t => t.tipo === 'receita' && t.status === 'efetivada')
+        .filter(t => t.tipo === 'receita')
         .reduce((sum, t) => sum + t.valor, 0);
       
       const totalDespesas = transacoesBanco
-        .filter(t => t.tipo === 'despesa' && t.status === 'efetivada')
+        .filter(t => t.tipo === 'despesa')
         .reduce((sum, t) => sum + t.valor, 0);
 
       // Filtrar ajustes de saldo deste banco no período
