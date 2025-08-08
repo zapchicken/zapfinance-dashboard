@@ -43,7 +43,7 @@ export default function Fornecedores() {
       .from('fornecedores')
       .select('*')
       .eq('user_id', user?.id)
-      .order('created_at', { ascending: false });
+      .order('nome', { ascending: true });
     if (!error) setFornecedores(data || []);
     setLoading(false);
   };
