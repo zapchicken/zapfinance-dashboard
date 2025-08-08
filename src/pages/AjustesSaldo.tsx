@@ -522,19 +522,14 @@ export default function AjustesSaldo() {
                   id="observacoes"
                   value={observacoes}
                   onChange={(e) => setObservacoes(e.target.value)}
-                  placeholder="Detalhes adicionais sobre o ajuste..."
+                  placeholder="Observações adicionais..."
                   rows={3}
                 />
               </div>
 
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleSubmit} disabled={submitting} className="w-full sm:w-auto">
-                  {submitting ? "Salvando..." : "Confirmar Ajuste"}
-                </Button>
-              </div>
+              <Button type="button" onClick={handleSubmit} disabled={submitting} className="w-full">
+                {submitting ? "Salvando..." : "Confirmar Ajuste"}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
