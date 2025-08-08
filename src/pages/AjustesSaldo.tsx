@@ -97,6 +97,8 @@ export default function AjustesSaldo() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedBanco, setSelectedBanco] = useState<string>("");
   const [selectedBancoFilter, setSelectedBancoFilter] = useState<string>("todos");
+  const [dataInicial, setDataInicial] = useState<string>("");
+  const [dataFinal, setDataFinal] = useState<string>("");
   const [saldoAtual, setSaldoAtual] = useState<number>(0);
   const [saldoNovo, setSaldoNovo] = useState<string>("");
   const [motivo, setMotivo] = useState<string>("");
@@ -387,21 +389,47 @@ export default function AjustesSaldo() {
     }
   };
 
-  // Filtrar transações por banco
-  const transacoesFiltradas = transacoes.filter(t => 
-    selectedBancoFilter === "todos" || t.banco_id === selectedBancoFilter
-  );
+  // Filtrar transações por banco e data
+  const transacoesFiltradas = transacoes.filter(t => {
+    const bancoMatch = selectedBancoFilter === "todos" || t.banco_id === selectedBancoFilter;
+    
+    if (!bancoMatch) return false;
+    
+    // Se não há filtros de data, retorna todas
+    if (!dataInicial && !dataFinal) return true;
+    
+    const dataTransacao = new Date(t.data_transacao);
+    
+    // Filtro por data inicial
+    if (dataInicial) {
+      const dataInicialObj = new Date(dataInicial);
+      dataInicialObj.setHours(0, 0, 0, 0);
+      if (dataTransacao < dataInicialObj) return false;
+    }
+    
+    // Filtro por data final
+    if (dataFinal) {
+      const dataFinalObj = new Date(dataFinal);
+      dataFinalObj.setHours(23, 59, 59, 999);
+      if (dataTransacao > dataFinalObj) return false;
+    }
+    
+    return true;
+  });
 
   // Debug para verificar transações
   console.log('🔍 DEBUG - Transações:', {
     total: transacoes.length,
     filtradas: transacoesFiltradas.length,
     filtroAtual: selectedBancoFilter,
+    dataInicial,
+    dataFinal,
     transacoes: transacoes.map(t => ({
       id: t.id,
       descricao: t.descricao,
       banco_id: t.banco_id,
-      banco_nome: t.banco?.nome
+      banco_nome: t.banco?.nome,
+      data_transacao: t.data_transacao
     }))
   });
 
@@ -589,33 +617,60 @@ export default function AjustesSaldo() {
               <DollarSign className="h-5 w-5" />
               Transações
             </CardTitle>
-            <div className="flex items-center gap-2">
-              <Select value={selectedBancoFilter} onValueChange={setSelectedBancoFilter}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filtrar por banco" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os bancos</SelectItem>
-                  {bancos.map(banco => (
-                    <SelectItem key={banco.id} value={banco.id}>
-                      {banco.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                         <div className="flex items-center gap-2">
+               <Select value={selectedBancoFilter} onValueChange={setSelectedBancoFilter}>
+                 <SelectTrigger className="w-48">
+                   <SelectValue placeholder="Filtrar por banco" />
+                 </SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="todos">Todos os bancos</SelectItem>
+                   {bancos.map(banco => (
+                     <SelectItem key={banco.id} value={banco.id}>
+                       {banco.nome}
+                     </SelectItem>
+                   ))}
+                 </SelectContent>
+               </Select>
+               <Input
+                 type="date"
+                 value={dataInicial}
+                 onChange={(e) => setDataInicial(e.target.value)}
+                 placeholder="Data inicial"
+                 className="w-40"
+               />
+               <Input
+                 type="date"
+                 value={dataFinal}
+                 onChange={(e) => setDataFinal(e.target.value)}
+                 placeholder="Data final"
+                 className="w-40"
+               />
+               <Button
+                 variant="outline"
+                 size="sm"
+                 onClick={() => {
+                   setDataInicial("");
+                   setDataFinal("");
+                   setSelectedBancoFilter("todos");
+                 }}
+               >
+                 Limpar Filtros
+               </Button>
+             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {transacoesFiltradas.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <div>Nenhuma transação encontrada</div>
-                <div className="text-sm mt-2">
-                  Total de transações: {transacoes.length} | 
-                  Filtro: {selectedBancoFilter === "todos" ? "Todos os bancos" : "Banco específico"}
-                </div>
-              </div>
+                         {transacoesFiltradas.length === 0 ? (
+               <div className="text-center py-8 text-muted-foreground">
+                 <div>Nenhuma transação encontrada</div>
+                 <div className="text-sm mt-2">
+                   Total de transações: {transacoes.length} | 
+                   Filtro banco: {selectedBancoFilter === "todos" ? "Todos os bancos" : "Banco específico"} |
+                   {dataInicial && ` Data inicial: ${dataInicial}`} |
+                   {dataFinal && ` Data final: ${dataFinal}`}
+                 </div>
+               </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
