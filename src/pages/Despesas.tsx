@@ -60,7 +60,7 @@ export default function Despesas() {
       // Edição
       const { error } = await supabase.from('categorias').update({
         user_id: user.id,
-        nome: formData.nome,
+        nome: formData.nome.charAt(0).toUpperCase() + formData.nome.slice(1).toLowerCase(),
         tipo: 'despesa',
         categoria: formData.categoria
       }).eq('id', editId);
@@ -76,7 +76,7 @@ export default function Despesas() {
       // Cadastro
       const { error } = await supabase.from('categorias').insert({
         user_id: user.id,
-        nome: formData.nome,
+        nome: formData.nome.charAt(0).toUpperCase() + formData.nome.slice(1).toLowerCase(),
         tipo: 'despesa',
         categoria: formData.categoria
       });

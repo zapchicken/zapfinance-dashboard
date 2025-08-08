@@ -23,9 +23,14 @@ export default function Fornecedores() {
   const [editId, setEditId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchFornecedores();
     getUser();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchFornecedores();
+    }
+  }, [user]);
 
   const getUser = async () => {
     const { data } = await supabase.auth.getUser();
@@ -53,7 +58,7 @@ export default function Fornecedores() {
       // Edição
       const { error } = await supabase.from('fornecedores').update({
         user_id: user.id,
-        nome: formData.nome,
+        nome: formData.nome.toUpperCase(),
         telefone: formData.telefone,
         email: formData.email,
         cnpj_cpf: formData.cnpj_cpf,
@@ -71,7 +76,7 @@ export default function Fornecedores() {
       // Cadastro
       const { error } = await supabase.from('fornecedores').insert({
         user_id: user.id,
-        nome: formData.nome,
+        nome: formData.nome.toUpperCase(),
         telefone: formData.telefone,
         email: formData.email,
         cnpj_cpf: formData.cnpj_cpf,
