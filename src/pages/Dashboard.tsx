@@ -645,9 +645,14 @@ export default function Dashboard() {
       {/* DRE estilizado */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-bold flex gap-2 items-center">
-            <BarChart3 className="h-5 w-5" /> Demonstrativo de Resultado
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-bold flex gap-2 items-center">
+              <BarChart3 className="h-5 w-5" /> Demonstrativo de Resultado
+            </CardTitle>
+            <Badge variant="secondary" className="text-xs">
+              Base: {baseTemporal === 'competencia' ? 'Competência' : 'Caixa'}
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <div className="grid grid-cols-12 gap-4 border-b pb-2">
