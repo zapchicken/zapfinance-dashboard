@@ -532,7 +532,7 @@ export default function Dashboard() {
       aReceberProximos7Dias,
       aPagarProximos7Dias
     };
-  }, [receitas, contasPagar, selectedMonth, categoriasDespesas]);
+  }, [receitas, contasPagar, selectedMonth, categoriasDespesas, baseTemporal]);
 
   const handlePreviousMonth = () => {
     setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, 1));
