@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TrendingUp, TrendingDown, Calendar, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { parseDateSafe, toISODateLocal } from "@/utils/date";
 import { useAuth } from "@/hooks/useAuth";
 
 interface Banco {
@@ -36,8 +37,8 @@ export default function FluxoCaixa() {
   const { user } = useAuth();
 
   // 1. Adicionar estados para data de início e término:
-  // Inicializar com a data atual
-  const hoje = new Date().toISOString().split('T')[0];
+  // Inicializar com a data atual (seguro contra fuso)
+  const hoje = toISODateLocal(new Date());
   const [dataInicio, setDataInicio] = useState(hoje);
   const [dataFim, setDataFim] = useState(hoje);
 
@@ -252,8 +253,8 @@ export default function FluxoCaixa() {
       .filter(m => m.data)
       .sort((a, b) => {
         // Ordenar por data (mais antiga primeiro - ordem crescente)
-        const dateA = new Date(a.data);
-        const dateB = new Date(b.data);
+        const dateA = parseDateSafe(a.data);
+        const dateB = parseDateSafe(b.data);
         return dateA.getTime() - dateB.getTime();
       })
       .slice(0, 20); // últimos 20
@@ -268,10 +269,10 @@ export default function FluxoCaixa() {
   function getDateRange(start: string, end: string) {
     if (!start || !end) return [];
     const result = [];
-    let current = new Date(start);
-    const endDate = new Date(end);
+    let current = parseDateSafe(start);
+    const endDate = parseDateSafe(end);
     while (current <= endDate) {
-      result.push(current.toISOString().split('T')[0]);
+      result.push(toISODateLocal(current));
       current.setDate(current.getDate() + 1);
     }
     return result;
