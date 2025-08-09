@@ -508,15 +508,17 @@ export default function ContasPagar() {
   const contasFiltradas = contasOrdenadas.filter(conta => {
     // Filtro de busca por texto
     const searchLower = searchTerm.toLowerCase();
+    const categoriaEncontrada = despesas.find(cat => cat.id === conta.categoria_id);
     const matchesSearch = !searchTerm || 
         String(conta.descricao || "").toLowerCase().includes(searchLower) ||
-        despesas.find(cat => cat.id === conta.categoria_id)?.nome?.toLowerCase().includes(searchLower) ||
+        categoriaEncontrada?.nome?.toLowerCase().includes(searchLower) ||
+        categoriaEncontrada?.categoria?.toLowerCase().includes(searchLower) ||
         fornecedores.find(f => f.id === conta.fornecedor_id)?.nome?.toLowerCase().includes(searchLower);
 
     // Filtro por modalidade (categoria de despesa)
     const categoriaDespesa = despesas.find(cat => cat.id === conta.categoria_id);
     const matchesModalidade = !filtroModalidade || 
-        categoriaDespesa?.nome?.toLowerCase().includes(filtroModalidade.toLowerCase());
+        categoriaDespesa?.categoria?.toLowerCase().includes(filtroModalidade.toLowerCase());
 
     // Filtro por fornecedor
     const matchesFornecedor = !filtroFornecedor || 
