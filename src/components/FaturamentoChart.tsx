@@ -39,7 +39,8 @@ export default function FaturamentoChart({ receitas, selectedMonth }: Faturament
       const ultimoDia = new Date(ano, mes + 1, 0);
       
       const receitasPeriodo = receitas.filter(r => {
-        const dataReceita = parseDateSafe(r.data_vencimento);
+        const baseDate = r.data_recebimento || r.data_vencimento;
+        const dataReceita = parseDateSafe(baseDate);
         return dataReceita >= primeiroDia && dataReceita <= ultimoDia;
       });
 
@@ -54,7 +55,8 @@ export default function FaturamentoChart({ receitas, selectedMonth }: Faturament
 
       // Somar faturamento por dia
       receitasPeriodo.forEach(r => {
-        const dataReceita = parseDateSafe(r.data_vencimento);
+        const baseDate = r.data_recebimento || r.data_vencimento;
+        const dataReceita = parseDateSafe(baseDate);
         const dataStr = `${dataReceita.getFullYear()}-${String(dataReceita.getMonth() + 1).padStart(2, '0')}-${String(dataReceita.getDate()).padStart(2, '0')}`;
         faturamentoPorDia[dataStr] = (faturamentoPorDia[dataStr] || 0) + r.valor;
       });
