@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { parseDateSafe } from '@/utils/date';
+import { parseDateSafe, toISODateLocal } from '@/utils/date';
 import { Loader2, FileText, TrendingUp, DollarSign, BarChart3, Calendar, Filter, Download, ArrowUp, ArrowDown, Circle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Badge } from '@/components/ui/badge';
@@ -594,7 +594,7 @@ export default function Relatorios() {
     XLSX.utils.book_append_sheet(workbook, taxasSheet, 'Taxas');
     
     // Salvar arquivo
-    XLSX.writeFile(workbook, `detalhamento_${new Date().toISOString().split('T')[0]}.xlsx`);
+      XLSX.writeFile(workbook, `detalhamento_${toISODateLocal(new Date())}.xlsx`);
     
     toast({
       title: "Sucesso",
@@ -638,7 +638,7 @@ export default function Relatorios() {
     XLSX.utils.book_append_sheet(workbook, top5DespesasSheet, 'Top 5 Despesas');
     
     // Salvar arquivo
-    XLSX.writeFile(workbook, `top5_${new Date().toISOString().split('T')[0]}.xlsx`);
+      XLSX.writeFile(workbook, `top5_${toISODateLocal(new Date())}.xlsx`);
     
     toast({
       title: "Sucesso",
@@ -698,7 +698,7 @@ export default function Relatorios() {
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Relatório DRE');
       
       // Salvar arquivo
-      XLSX.writeFile(workbook, `relatorio_dre_${new Date().toISOString().split('T')[0]}.xlsx`);
+      XLSX.writeFile(workbook, `relatorio_dre_${toISODateLocal(new Date())}.xlsx`);
       
       toast({
         title: "Sucesso",
@@ -753,7 +753,7 @@ export default function Relatorios() {
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Relatório Comparativo');
     
     // Salvar arquivo
-    XLSX.writeFile(workbook, `relatorio_comparativo_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(workbook, `relatorio_comparativo_${toISODateLocal(new Date())}.xlsx`);
     
     toast({
       title: "Sucesso",
@@ -1003,7 +1003,7 @@ export default function Relatorios() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `relatorio_${tipoRelatorio.toLowerCase().replace(/\s+/g, '_').replace(/[^\w\s]/gi, '')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    a.download = `relatorio_${tipoRelatorio.toLowerCase().replace(/\s+/g, '_').replace(/[^\w\s]/gi, '')}_${toISODateLocal(new Date())}.xlsx`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

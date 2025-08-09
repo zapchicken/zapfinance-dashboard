@@ -291,8 +291,12 @@ export default function FluxoCaixa() {
   bancos.forEach(b => { saldosPorBanco[b.id] = b.saldo_inicial || 0; });
   const linhas = todasDatas.map(data => {
     const celulas = bancos.map(banco => {
-      const entrada = entradas.filter(e => e.banco_id === banco.id && e.data_recebimento === data).reduce((sum, e) => sum + (e.valor_liquido || e.valor || 0), 0);
-      const saida = saidas.filter(s => s.banco_id === banco.id && s.data_vencimento === data).reduce((sum, s) => sum + (s.valor || 0), 0);
+      const entrada = entradas
+        .filter(e => e.banco_id === banco.id && toISODateLocal(parseDateSafe(e.data_recebimento)) === data)
+        .reduce((sum, e) => sum + (e.valor_liquido || e.valor || 0), 0);
+      const saida = saidas
+        .filter(s => s.banco_id === banco.id && toISODateLocal(parseDateSafe(s.data_vencimento)) === data)
+        .reduce((sum, s) => sum + (s.valor || 0), 0);
       saldosPorBanco[banco.id] += entrada - saida;
       return { entrada, saida, saldo: saldosPorBanco[banco.id] };
     });

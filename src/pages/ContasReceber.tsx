@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Search, Edit, Trash2, Eye, Download, Star } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { toISODateLocal } from "@/utils/date";
 import { parseDateSafe } from "@/utils/date";
 import { Select as ShadSelect, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useReceitas } from "@/hooks/useReceitas";
@@ -620,7 +621,7 @@ export default function ContasReceber() {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `contas_a_receber_${new Date().toISOString().split('T')[0]}.csv`);
+  link.setAttribute('download', `contas_a_receber_${toISODateLocal(new Date())}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();

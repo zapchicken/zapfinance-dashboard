@@ -47,7 +47,8 @@ export default function FaturamentoChart({ receitas, selectedMonth }: Faturament
       
       // Inicializar todos os dias do mês com 0
       for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
-        const dataStr = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+        const data = new Date(ano, mes, dia, 12, 0, 0);
+        const dataStr = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
         faturamentoPorDia[dataStr] = 0;
       }
 

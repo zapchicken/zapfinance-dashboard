@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search, Edit, Trash2, ArrowRightLeft, Calendar, DollarSign } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { toISODateLocal } from "@/utils/date";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Bancos() {
@@ -28,7 +29,7 @@ export default function Bancos() {
     banco_destino_id: "",
     valor: "",
     descricao: "",
-    data_transferencia: new Date().toISOString().split('T')[0]
+    data_transferencia: toISODateLocal(new Date())
   });
   const [editId, setEditId] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
@@ -105,7 +106,7 @@ export default function Bancos() {
       // Adicionar data_inicial apenas se não estiver vazia
       if (formData.data_inicial) {
         // Converter para data ISO e pegar apenas a parte da data (YYYY-MM-DD)
-        const dataInicial = new Date(formData.data_inicial + 'T00:00:00').toISOString().split('T')[0];
+        const dataInicial = formData.data_inicial;
         updateData.data_inicial = dataInicial;
       }
       
@@ -134,7 +135,7 @@ export default function Bancos() {
       // Adicionar data_inicial apenas se não estiver vazia
       if (formData.data_inicial) {
         // Converter para data ISO e pegar apenas a parte da data (YYYY-MM-DD)
-        const dataInicial = new Date(formData.data_inicial + 'T00:00:00').toISOString().split('T')[0];
+        const dataInicial = formData.data_inicial;
         insertData.data_inicial = dataInicial;
       }
       
@@ -219,7 +220,7 @@ export default function Bancos() {
         banco_destino_id: "",
         valor: "",
         descricao: "",
-        data_transferencia: new Date().toISOString().split('T')[0]
+        data_transferencia: toISODateLocal(new Date())
       });
       fetchBancos();
       fetchTransferencias();

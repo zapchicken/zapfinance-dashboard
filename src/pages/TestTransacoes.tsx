@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { toISODateLocal } from "@/utils/date";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -22,7 +23,7 @@ export default function TestTransacoes() {
     descricao: "",
     valor: "",
     tipo: "receita" as 'receita' | 'despesa' | 'transferencia',
-    data_transacao: new Date().toISOString().split('T')[0],
+    data_transacao: toISODateLocal(new Date()),
     status: "efetivada" as 'pendente' | 'efetivada' | 'cancelada',
     observacoes: ""
   });
@@ -96,7 +97,7 @@ export default function TestTransacoes() {
         descricao: "",
         valor: "",
         tipo: "receita",
-        data_transacao: new Date().toISOString().split('T')[0],
+        data_transacao: toISODateLocal(new Date()),
         status: "efetivada",
         observacoes: ""
       });

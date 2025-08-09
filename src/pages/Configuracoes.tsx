@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Settings, Save, User, Bell, Database, Download, Upload, Mail, Cloud } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { toISODateLocal } from "@/utils/date";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -70,7 +71,7 @@ export default function Configuracoes() {
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
         link.setAttribute('href', url);
-        link.setAttribute('download', `zapfinance_backup_${new Date().toISOString().split('T')[0]}.json`);
+        link.setAttribute('download', `zapfinance_backup_${toISODateLocal(new Date())}.json`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
