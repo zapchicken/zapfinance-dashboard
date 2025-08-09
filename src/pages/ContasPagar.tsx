@@ -1049,7 +1049,7 @@ export default function ContasPagar() {
                         )}
                       </div>
                     </td>
-                    <td className="p-4">{despesas.find(cat => cat.id === conta.categoria_id)?.nome || 'Sem categoria'}</td>
+                    <td className="p-4">{despesas.find(cat => cat.id === conta.categoria_id)?.categoria || 'Sem categoria'}</td>
                     <td className="p-4">{fornecedores.find(f => f.id === conta.fornecedor_id)?.nome || 'Sem fornecedor'}</td>
                     <td className="p-4">{conta.data_vencimento ? conta.data_vencimento.split('-').reverse().join('/') : '-'}</td>
                     {/* Removido campo banco pois não existe na tabela */}
