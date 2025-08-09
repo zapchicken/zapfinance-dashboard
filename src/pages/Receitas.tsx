@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,11 +9,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { supabase } from "@/integrations/supabase/client";
 
 export default function Receitas() {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = usePersistentState('rec_search', "");
   const [modalidades, setModalidades] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = usePersistentState('rec_form', {
     nome: "",
     taxa_percentual: "",
     data_efetivacao: ""

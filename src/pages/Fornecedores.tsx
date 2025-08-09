@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,9 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 
 export default function Fornecedores() {
   const [fornecedores, setFornecedores] = useState<any[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = usePersistentState('forn_search', "");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = usePersistentState('forn_form', {
     nome: "",
     telefone: "",
     email: "",

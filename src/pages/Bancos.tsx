@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,13 +19,13 @@ export default function Bancos() {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = usePersistentState('bancos_form', {
     nome: "",
     tipo: "conta_corrente",
     saldo_inicial: "",
     data_inicial: ""
   });
-  const [transferData, setTransferData] = useState({
+  const [transferData, setTransferData] = usePersistentState('bancos_transfer', {
     banco_origem_id: "",
     banco_destino_id: "",
     valor: "",
