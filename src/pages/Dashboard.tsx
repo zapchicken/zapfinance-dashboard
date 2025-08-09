@@ -31,7 +31,6 @@ import {
   AccordionTrigger,
   AccordionContent
 } from "@/components/ui/accordion";
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import FaturamentoChart from "@/components/FaturamentoChart";
 import FaturamentoPorModalidadeChart from "@/components/FaturamentoPorModalidadeChart";
 
@@ -79,7 +78,6 @@ export default function Dashboard() {
   const [bancos, setBancos] = useState<Banco[]>([]);
   const [categoriasDespesas, setCategoriasDespesas] = useState<any[]>([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
-  const [baseTemporal, setBaseTemporal] = useState<'competencia' | 'caixa'>('competencia');
 
   // Fetch bancos
   const fetchBancos = async () => {
@@ -148,26 +146,22 @@ export default function Dashboard() {
     console.log('Último dia do mês:', ultimoDia);
 
     const receitasMesAtual = (receitas || []).filter(r => {
-      // Base temporal: competência -> data_vencimento; caixa -> data_recebimento (exclui não recebidas)
-      const dataStr = baseTemporal === 'competencia' ? r.data_vencimento : r.data_recebimento;
-      if (!dataStr) return false;
-      const data = new Date(dataStr);
+      if (!r.data_recebimento) return false;
+      const data = new Date(r.data_recebimento);
       return data >= primeiroDia && data <= ultimoDia;
     });
 
-    console.log('Receitas filtradas para o mês atual (\'receitasMesAtual\'):', receitasMesAtual);
-    console.log('📅 Debug datas das receitas:', receitasMesAtual.map(r => ({
+    console.log('Receitas filtradas para o mês atual (base caixa):', receitasMesAtual);
+    console.log('📅 Debug datas das receitas (caixa):', receitasMesAtual.map(r => ({
       descricao: r.descricao,
       data_vencimento: r.data_vencimento,
       data_recebimento: r.data_recebimento,
-      data_usada: r.data_vencimento
+      data_usada: r.data_recebimento
     })));
 
     const despesasMesAtual = (contasPagar || []).filter(d => {
-      // Base temporal: competência -> data_vencimento; caixa -> data_pagamento (exclui não pagas)
-      const dataBase = baseTemporal === 'competencia' ? d.data_vencimento : d.data_pagamento;
-      if (!dataBase) return false;
-      const [ano, mes, dia] = dataBase.split('-').map(Number);
+      if (!d.data_pagamento) return false;
+      const [ano, mes, dia] = d.data_pagamento.split('-').map(Number);
       const dataDespesa = new Date(ano, mes - 1, dia, 12, 0, 0); // Meio-dia para garantir
       const dentroDoPeriodo = dataDespesa >= primeiroDia && dataDespesa <= ultimoDia;
       
@@ -532,7 +526,7 @@ export default function Dashboard() {
       aReceberProximos7Dias,
       aPagarProximos7Dias
     };
-  }, [receitas, contasPagar, selectedMonth, categoriasDespesas, baseTemporal]);
+  }, [receitas, contasPagar, selectedMonth, categoriasDespesas]);
 
   const handlePreviousMonth = () => {
     setSelectedMonth(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, 1));
@@ -610,17 +604,7 @@ export default function Dashboard() {
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
-          <div className="hidden sm:block w-[260px]">
-            <Select value={baseTemporal} onValueChange={(v: any) => setBaseTemporal(v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Base temporal" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="caixa">Base temporal: Caixa (data de recebimento)</SelectItem>
-                <SelectItem value="competencia">Base temporal: Competência (data da receita)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          
         </div>
       </div>
 
@@ -645,14 +629,9 @@ export default function Dashboard() {
       {/* DRE estilizado */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-bold flex gap-2 items-center">
-              <BarChart3 className="h-5 w-5" /> Demonstrativo de Resultado
-            </CardTitle>
-            <Badge variant="secondary" className="text-xs">
-              Base: {baseTemporal === 'competencia' ? 'Competência' : 'Caixa'}
-            </Badge>
-          </div>
+          <CardTitle className="text-lg font-bold flex gap-2 items-center">
+            <BarChart3 className="h-5 w-5" /> Demonstrativo de Resultado
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <div className="grid grid-cols-12 gap-4 border-b pb-2">
