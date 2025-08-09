@@ -43,7 +43,7 @@ export default function ContasReceber() {
   const [filtroDataRecebimentoInicio, setFiltroDataRecebimentoInicio] = usePersistentState('cr_filtroDataRecbIni', "");
   const [filtroDataRecebimentoFim, setFiltroDataRecebimentoFim] = usePersistentState('cr_filtroDataRecbFim', "");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = usePersistentState('cr_form', {
     descricao: "",
     cliente_nome: "",
     categoria_id: "",

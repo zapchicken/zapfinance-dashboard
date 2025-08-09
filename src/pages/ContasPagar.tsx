@@ -22,7 +22,7 @@ export default function ContasPagar() {
   const [fornecedores, setFornecedores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = usePersistentState('cp_form', {
     descricao: "",
     despesa_id: "",
     fornecedor_id: "",

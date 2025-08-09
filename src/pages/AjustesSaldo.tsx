@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,14 +97,14 @@ export default function AjustesSaldo() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedBanco, setSelectedBanco] = useState<string>("");
-  const [selectedBancoFilter, setSelectedBancoFilter] = useState<string>("todos");
-  const [dataInicial, setDataInicial] = useState<string>("");
-  const [dataFinal, setDataFinal] = useState<string>("");
+  const [selectedBanco, setSelectedBanco] = usePersistentState<string>('aj_selectedBanco', "");
+  const [selectedBancoFilter, setSelectedBancoFilter] = usePersistentState<string>('aj_selectedBancoFilter', "todos");
+  const [dataInicial, setDataInicial] = usePersistentState<string>('aj_dataInicial', "");
+  const [dataFinal, setDataFinal] = usePersistentState<string>('aj_dataFinal', "");
   const [saldoAtual, setSaldoAtual] = useState<number>(0);
-  const [saldoNovo, setSaldoNovo] = useState<string>("");
-  const [motivo, setMotivo] = useState<string>("");
-  const [observacoes, setObservacoes] = useState<string>("");
+  const [saldoNovo, setSaldoNovo] = usePersistentState<string>('aj_saldoNovo', "");
+  const [motivo, setMotivo] = usePersistentState<string>('aj_motivo', "");
+  const [observacoes, setObservacoes] = usePersistentState<string>('aj_observacoes', "");
   const [submitting, setSubmitting] = useState(false);
   
   // Estados para edição de transação
