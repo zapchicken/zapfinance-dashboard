@@ -146,7 +146,8 @@ export default function Dashboard() {
     console.log('Último dia do mês:', ultimoDia);
 
     const receitasMesAtual = (receitas || []).filter(r => {
-      const dataReceita = new Date(r.data_recebimento || r.data_vencimento);
+      // Total de Receita Bruta e gráficos devem considerar a data da receita (data_vencimento)
+      const dataReceita = new Date(r.data_vencimento);
       return dataReceita >= primeiroDia && dataReceita <= ultimoDia;
     });
 
@@ -155,7 +156,7 @@ export default function Dashboard() {
       descricao: r.descricao,
       data_vencimento: r.data_vencimento,
       data_recebimento: r.data_recebimento,
-      data_usada: r.data_recebimento || r.data_vencimento
+      data_usada: r.data_vencimento
     })));
 
     const despesasMesAtual = (contasPagar || []).filter(d => {
