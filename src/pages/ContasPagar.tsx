@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,15 +39,15 @@ export default function ContasPagar() {
   const [editandoConta, setEditandoConta] = useState<any | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
-  const [filtroStatus, setFiltroStatus] = useState('');
-  const [filtroVencimentoInicio, setFiltroVencimentoInicio] = useState('');
-  const [filtroVencimentoFim, setFiltroVencimentoFim] = useState('');
-  const [filtroPagamentoInicio, setFiltroPagamentoInicio] = useState('');
-  const [filtroPagamentoFim, setFiltroPagamentoFim] = useState('');
-  const [filtroModalidade, setFiltroModalidade] = useState('');
-  const [filtroFornecedor, setFiltroFornecedor] = useState('');
-  const [filtroBanco, setFiltroBanco] = useState('');
-  const [filtroHoje, setFiltroHoje] = useState(false);
+  const [filtroStatus, setFiltroStatus] = usePersistentState('cp_filtroStatus', '');
+  const [filtroVencimentoInicio, setFiltroVencimentoInicio] = usePersistentState('cp_filtroVencInicio', '');
+  const [filtroVencimentoFim, setFiltroVencimentoFim] = usePersistentState('cp_filtroVencFim', '');
+  const [filtroPagamentoInicio, setFiltroPagamentoInicio] = usePersistentState('cp_filtroPagInicio', '');
+  const [filtroPagamentoFim, setFiltroPagamentoFim] = usePersistentState('cp_filtroPagFim', '');
+  const [filtroModalidade, setFiltroModalidade] = usePersistentState('cp_filtroModalidade', '');
+  const [filtroFornecedor, setFiltroFornecedor] = usePersistentState('cp_filtroFornecedor', '');
+  const [filtroBanco, setFiltroBanco] = usePersistentState('cp_filtroBanco', '');
+  const [filtroHoje, setFiltroHoje] = usePersistentState('cp_filtroHoje', false);
   const [bancos, setBancos] = useState<any[]>([]);
   // Removido tipoDespesa pois não existe na tabela
 

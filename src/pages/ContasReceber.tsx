@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,20 +28,20 @@ export default function ContasReceber() {
     contasDataIsArray: Array.isArray(contasData),
     contasIsArray: Array.isArray(contas)
   });
-  const [searchTerm, setSearchTerm] = useState("");
-  const [mesSelecionado, setMesSelecionado] = useState(() => {
+  const [searchTerm, setSearchTerm] = usePersistentState('cr_search', "");
+  const [mesSelecionado, setMesSelecionado] = usePersistentState('cr_mes', (() => {
     const hoje = new Date();
     return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-  });
-  const [filtroDataReceita, setFiltroDataReceita] = useState("");
-  const [filtroDataRecebimento, setFiltroDataRecebimento] = useState("");
-  const [filtroModalidade, setFiltroModalidade] = useState("");
-  const [filtroStatus, setFiltroStatus] = useState("");
-  const [filtroBanco, setFiltroBanco] = useState("");
-  const [filtroDataReceitaInicio, setFiltroDataReceitaInicio] = useState("");
-  const [filtroDataReceitaFim, setFiltroDataReceitaFim] = useState("");
-  const [filtroDataRecebimentoInicio, setFiltroDataRecebimentoInicio] = useState("");
-  const [filtroDataRecebimentoFim, setFiltroDataRecebimentoFim] = useState("");
+  })());
+  const [filtroDataReceita, setFiltroDataReceita] = usePersistentState('cr_filtroDataReceita', "");
+  const [filtroDataRecebimento, setFiltroDataRecebimento] = usePersistentState('cr_filtroDataRecebimento', "");
+  const [filtroModalidade, setFiltroModalidade] = usePersistentState('cr_filtroModalidade', "");
+  const [filtroStatus, setFiltroStatus] = usePersistentState('cr_filtroStatus', "");
+  const [filtroBanco, setFiltroBanco] = usePersistentState('cr_filtroBanco', "");
+  const [filtroDataReceitaInicio, setFiltroDataReceitaInicio] = usePersistentState('cr_filtroDataRecIni', "");
+  const [filtroDataReceitaFim, setFiltroDataReceitaFim] = usePersistentState('cr_filtroDataRecFim', "");
+  const [filtroDataRecebimentoInicio, setFiltroDataRecebimentoInicio] = usePersistentState('cr_filtroDataRecbIni', "");
+  const [filtroDataRecebimentoFim, setFiltroDataRecebimentoFim] = usePersistentState('cr_filtroDataRecbFim', "");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     descricao: "",

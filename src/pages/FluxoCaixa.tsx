@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,8 +26,8 @@ interface AjusteSaldo {
 }
 
 export default function FluxoCaixa() {
-  const [periodoSelecionado, setPeriodoSelecionado] = useState("60");
-  const [bancoSelecionado, setBancoSelecionado] = useState("todos");
+  const [periodoSelecionado, setPeriodoSelecionado] = usePersistentState("fc_periodo", "60");
+  const [bancoSelecionado, setBancoSelecionado] = usePersistentState("fc_banco", "todos");
   const [bancos, setBancos] = useState<Banco[]>([]);
   const [movimentacoes, setMovimentacoes] = useState<any[]>([]);
   const [entradas, setEntradas] = useState<any[]>([]);
@@ -39,8 +40,8 @@ export default function FluxoCaixa() {
   // 1. Adicionar estados para data de início e término:
   // Inicializar com a data atual (seguro contra fuso)
   const hoje = toISODateLocal(new Date());
-  const [dataInicio, setDataInicio] = useState(hoje);
-  const [dataFim, setDataFim] = useState(hoje);
+  const [dataInicio, setDataInicio] = usePersistentState("fc_dataInicio", hoje);
+  const [dataFim, setDataFim] = usePersistentState("fc_dataFim", hoje);
 
   useEffect(() => {
     if (!user) return;
