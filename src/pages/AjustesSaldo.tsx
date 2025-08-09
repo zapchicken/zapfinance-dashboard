@@ -25,6 +25,7 @@ import {
   Search
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { parseDateSafe } from "@/utils/date";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -410,18 +411,18 @@ export default function AjustesSaldo() {
     // Se não há filtros de data, retorna todas
     if (!dataInicial && !dataFinal) return true;
     
-    const dataTransacao = new Date(t.data_transacao);
+    const dataTransacao = parseDateSafe(t.data_transacao);
     
     // Filtro por data inicial
     if (dataInicial) {
-      const dataInicialObj = new Date(dataInicial);
+      const dataInicialObj = parseDateSafe(dataInicial);
       dataInicialObj.setHours(0, 0, 0, 0);
       if (dataTransacao < dataInicialObj) return false;
     }
     
     // Filtro por data final
     if (dataFinal) {
-      const dataFinalObj = new Date(dataFinal);
+      const dataFinalObj = parseDateSafe(dataFinal);
       dataFinalObj.setHours(23, 59, 59, 999);
       if (dataTransacao > dataFinalObj) return false;
     }
@@ -439,18 +440,18 @@ export default function AjustesSaldo() {
         // Se não há filtros de data, considerar todas as transações
         if (!dataInicial && !dataFinal) return true;
         
-        const dataTransacao = new Date(t.data_transacao);
+        const dataTransacao = parseDateSafe(t.data_transacao);
         
         // Filtro por data inicial
         if (dataInicial) {
-          const dataInicialObj = new Date(dataInicial);
+          const dataInicialObj = parseDateSafe(dataInicial);
           dataInicialObj.setHours(0, 0, 0, 0);
           if (dataTransacao < dataInicialObj) return false;
         }
         
         // Filtro por data final
         if (dataFinal) {
-          const dataFinalObj = new Date(dataFinal);
+          const dataFinalObj = parseDateSafe(dataFinal);
           dataFinalObj.setHours(23, 59, 59, 999);
           if (dataTransacao > dataFinalObj) return false;
         }
@@ -474,18 +475,18 @@ export default function AjustesSaldo() {
         // Se não há filtros de data, considerar todos os ajustes
         if (!dataInicial && !dataFinal) return true;
         
-        const dataAjuste = new Date(a.data_ajuste);
+        const dataAjuste = parseDateSafe(a.data_ajuste);
         
         // Filtro por data inicial
         if (dataInicial) {
-          const dataInicialObj = new Date(dataInicial);
+          const dataInicialObj = parseDateSafe(dataInicial);
           dataInicialObj.setHours(0, 0, 0, 0);
           if (dataAjuste < dataInicialObj) return false;
         }
         
         // Filtro por data final
         if (dataFinal) {
-          const dataFinalObj = new Date(dataFinal);
+          const dataFinalObj = parseDateSafe(dataFinal);
           dataFinalObj.setHours(23, 59, 59, 999);
           if (dataAjuste > dataFinalObj) return false;
         }

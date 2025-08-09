@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { parseDateSafe } from "@/utils/date";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -142,8 +143,8 @@ export default function ContasPagar() {
       fornecedores.find(f => f.id === conta.fornecedor_id)?.nome || 'Sem fornecedor',
       bancos.find(b => b.id === conta.banco_id)?.nome || 'Sem banco',
       formatCurrency(conta.valor || 0),
-      conta.data_vencimento ? new Date(conta.data_vencimento).toLocaleDateString('pt-BR') : '',
-      conta.data_pagamento ? new Date(conta.data_pagamento).toLocaleDateString('pt-BR') : '',
+      conta.data_vencimento ? parseDateSafe(conta.data_vencimento).toLocaleDateString('pt-BR') : '',
+      conta.data_pagamento ? parseDateSafe(conta.data_pagamento).toLocaleDateString('pt-BR') : '',
       conta.status || '',
       conta.observacoes || '',
       conta.data_nota_fiscal ? new Date(conta.data_nota_fiscal).toLocaleDateString('pt-BR') : '',
@@ -1120,14 +1121,14 @@ export default function ContasPagar() {
               <div><b>Vencimento:</b> {(() => {
                 const [ano, mes, dia] = visualizarConta.data_vencimento.split('-').map(Number);
                 const data = new Date(ano, mes - 1, dia, 12, 0, 0);
-                return data.toLocaleDateString('pt-BR');
+                    return parseDateSafe(visualizarConta.data_vencimento).toLocaleDateString('pt-BR');
               })()}</div>
                               <div><b>Status:</b> {visualizarConta.status}</div>
                 <div><b>Observações:</b> {visualizarConta.observacoes}</div>
                 <div><b>Data Nota Fiscal:</b> {visualizarConta.data_nota_fiscal ? (() => {
                   const [ano, mes, dia] = visualizarConta.data_nota_fiscal.split('-').map(Number);
                   const data = new Date(ano, mes - 1, dia, 12, 0, 0);
-                  return data.toLocaleDateString('pt-BR');
+                  return parseDateSafe(visualizarConta.data_nota_fiscal).toLocaleDateString('pt-BR');
                 })() : '-'}</div>
                 <div><b>Referência Nota Fiscal:</b> {visualizarConta.referencia_nota_fiscal || '-'}</div>
               </div>

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Search, Edit, Trash2, Eye, Download, Star } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { parseDateSafe } from "@/utils/date";
 import { Select as ShadSelect, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { useReceitas } from "@/hooks/useReceitas";
 import { useAuth } from "@/hooks/useAuth";
@@ -474,13 +475,13 @@ export default function ContasReceber() {
           if (!conta.data_vencimento) {
             matchesDataReceita = false;
           } else {
-            const dataReceita = new Date(conta.data_vencimento + 'T00:00:00');
+            const dataReceita = parseDateSafe(conta.data_vencimento);
             if (filtroDataReceitaInicio) {
-              const inicio = new Date(filtroDataReceitaInicio + 'T00:00:00');
+              const inicio = parseDateSafe(filtroDataReceitaInicio);
               matchesDataReceita = matchesDataReceita && dataReceita >= inicio;
             }
             if (filtroDataReceitaFim) {
-              const fim = new Date(filtroDataReceitaFim + 'T23:59:59');
+              const fim = parseDateSafe(filtroDataReceitaFim);
               matchesDataReceita = matchesDataReceita && dataReceita <= fim;
             }
           }
@@ -492,13 +493,13 @@ export default function ContasReceber() {
           if (!conta.data_recebimento) {
             matchesDataRecebimento = false;
           } else {
-            const dataRecebimento = new Date(conta.data_recebimento + 'T00:00:00');
+            const dataRecebimento = parseDateSafe(conta.data_recebimento);
             if (filtroDataRecebimentoInicio) {
-              const inicio = new Date(filtroDataRecebimentoInicio + 'T00:00:00');
+              const inicio = parseDateSafe(filtroDataRecebimentoInicio);
               matchesDataRecebimento = matchesDataRecebimento && dataRecebimento >= inicio;
             }
             if (filtroDataRecebimentoFim) {
-              const fim = new Date(filtroDataRecebimentoFim + 'T23:59:59');
+              const fim = parseDateSafe(filtroDataRecebimentoFim);
               matchesDataRecebimento = matchesDataRecebimento && dataRecebimento <= fim;
             }
           }
@@ -511,7 +512,7 @@ export default function ContasReceber() {
           return false;
         }
         
-        const data = new Date(dataReferencia + 'T00:00:00');
+        const data = parseDateSafe(dataReferencia);
         const matchesDate = data >= primeiroDia && data <= ultimoDia;
         
         if (!matchesDate) {
@@ -603,8 +604,8 @@ export default function ContasReceber() {
       (conta.taxa_percentual || 0).toFixed(2),
       formatCurrency(conta.valor_taxa || 0),
       formatCurrency(conta.valor_liquido || 0),
-      conta.data_vencimento ? new Date(conta.data_vencimento).toLocaleDateString('pt-BR') : '',
-      conta.data_recebimento ? new Date(conta.data_recebimento).toLocaleDateString('pt-BR') : '',
+      conta.data_vencimento ? parseDateSafe(conta.data_vencimento).toLocaleDateString('pt-BR') : '',
+      conta.data_recebimento ? parseDateSafe(conta.data_recebimento).toLocaleDateString('pt-BR') : '',
       conta.status || '',
       conta.observacoes || ''
     ]);
