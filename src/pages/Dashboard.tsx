@@ -31,6 +31,7 @@ import {
   AccordionTrigger,
   AccordionContent
 } from "@/components/ui/accordion";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import FaturamentoChart from "@/components/FaturamentoChart";
 import FaturamentoPorModalidadeChart from "@/components/FaturamentoPorModalidadeChart";
 
@@ -78,6 +79,7 @@ export default function Dashboard() {
   const [bancos, setBancos] = useState<Banco[]>([]);
   const [categoriasDespesas, setCategoriasDespesas] = useState<any[]>([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [baseTemporal, setBaseTemporal] = useState<'competencia' | 'caixa'>('competencia');
 
   // Fetch bancos
   const fetchBancos = async () => {
@@ -146,9 +148,11 @@ export default function Dashboard() {
     console.log('Último dia do mês:', ultimoDia);
 
     const receitasMesAtual = (receitas || []).filter(r => {
-      // Total de Receita Bruta e gráficos devem considerar a data da receita (data_vencimento)
-      const dataReceita = new Date(r.data_vencimento);
-      return dataReceita >= primeiroDia && dataReceita <= ultimoDia;
+      // Base temporal: competência -> data_vencimento; caixa -> data_recebimento (exclui não recebidas)
+      const dataStr = baseTemporal === 'competencia' ? r.data_vencimento : r.data_recebimento;
+      if (!dataStr) return false;
+      const data = new Date(dataStr);
+      return data >= primeiroDia && data <= ultimoDia;
     });
 
     console.log('Receitas filtradas para o mês atual (\'receitasMesAtual\'):', receitasMesAtual);
@@ -160,8 +164,10 @@ export default function Dashboard() {
     })));
 
     const despesasMesAtual = (contasPagar || []).filter(d => {
-      // Criar data no fuso horário local para evitar problemas de fuso
-      const [ano, mes, dia] = d.data_vencimento.split('-').map(Number);
+      // Base temporal: competência -> data_vencimento; caixa -> data_pagamento (exclui não pagas)
+      const dataBase = baseTemporal === 'competencia' ? d.data_vencimento : d.data_pagamento;
+      if (!dataBase) return false;
+      const [ano, mes, dia] = dataBase.split('-').map(Number);
       const dataDespesa = new Date(ano, mes - 1, dia, 12, 0, 0); // Meio-dia para garantir
       const dentroDoPeriodo = dataDespesa >= primeiroDia && dataDespesa <= ultimoDia;
       
@@ -603,6 +609,17 @@ export default function Dashboard() {
             >
               <ChevronRight className="h-4 w-4" />
             </button>
+          </div>
+          <div className="hidden sm:block w-[260px]">
+            <Select value={baseTemporal} onValueChange={(v: any) => setBaseTemporal(v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Base temporal" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="competencia">Base temporal: Competência (data da receita)</SelectItem>
+                <SelectItem value="caixa">Base temporal: Caixa (data de recebimento)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
