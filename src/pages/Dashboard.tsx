@@ -32,6 +32,7 @@ import {
   AccordionContent
 } from "@/components/ui/accordion";
 import FaturamentoChart from "@/components/FaturamentoChart";
+import FaturamentoPorModalidadeChart from "@/components/FaturamentoPorModalidadeChart";
 
 interface Banco {
   id: string;
@@ -73,6 +74,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { data: receitas } = useReceitas();
   const { data: contasPagar } = useContasPagar();
+  const [modalidades, setModalidades] = useState<any[]>([]);
   const [bancos, setBancos] = useState<Banco[]>([]);
   const [categoriasDespesas, setCategoriasDespesas] = useState<any[]>([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
@@ -95,9 +97,21 @@ export default function Dashboard() {
     setCategoriasDespesas(data || []);
   };
 
+  // Fetch modalidades de receita
+  const fetchModalidades = async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from('modalidades_receita')
+      .select('id, nome')
+      .eq('user_id', user.id)
+      .order('nome');
+    if (!error) setModalidades(data || []);
+  };
+
   useEffect(() => {
     fetchBancos();
     fetchCategoriasDespesas();
+    fetchModalidades();
   }, [user]);
 
   const {
@@ -816,6 +830,18 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <FaturamentoChart receitas={receitas || []} selectedMonth={selectedMonth} />
+        </CardContent>
+      </Card>
+
+      {/* Faturamento por Modalidade */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg font-bold flex gap-2 items-center">
+            <BarChart3 className="h-5 w-5" /> Faturamento por Modalidade (mês)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <FaturamentoPorModalidadeChart receitas={receitas || []} modalidades={modalidades || []} selectedMonth={selectedMonth} />
         </CardContent>
       </Card>
     </div>
