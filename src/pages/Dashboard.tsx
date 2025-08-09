@@ -616,8 +616,8 @@ export default function Dashboard() {
                 <SelectValue placeholder="Base temporal" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="competencia">Base temporal: Competência (data da receita)</SelectItem>
                 <SelectItem value="caixa">Base temporal: Caixa (data de recebimento)</SelectItem>
+                <SelectItem value="competencia">Base temporal: Competência (data da receita)</SelectItem>
               </SelectContent>
             </Select>
           </div>
