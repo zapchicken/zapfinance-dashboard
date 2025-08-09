@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { parseDateSafe } from '@/utils/date';
 import { Loader2, FileText, TrendingUp, DollarSign, BarChart3, Calendar, Filter, Download, ArrowUp, ArrowDown, Circle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Badge } from '@/components/ui/badge';
@@ -103,12 +104,12 @@ export default function Relatorios() {
     const dadosMensais = meses.map((mes, index) => {
       // Filtrar dados do mês
       const receitasMes = receitas.filter(r => {
-        const dataVenc = new Date(r.data_vencimento);
+        const dataVenc = parseDateSafe(r.data_vencimento);
         return dataVenc >= mes.inicio && dataVenc <= mes.fim;
       });
 
       const despesasMes = despesas.filter(d => {
-        const dataVenc = new Date(d.data_vencimento);
+        const dataVenc = parseDateSafe(d.data_vencimento);
         return dataVenc >= mes.inicio && dataVenc <= mes.fim;
       });
 
@@ -202,12 +203,12 @@ export default function Relatorios() {
 
     // Filtrar dados do mês atual
     const receitasMes = receitas.filter(r => {
-      const dataVenc = new Date(r.data_vencimento);
+      const dataVenc = parseDateSafe(r.data_vencimento);
       return dataVenc >= inicioMes && dataVenc <= fimMes;
     });
 
     const despesasMes = despesas.filter(d => {
-      const dataVenc = new Date(d.data_vencimento);
+      const dataVenc = parseDateSafe(d.data_vencimento);
       return dataVenc >= inicioMes && dataVenc <= fimMes;
     });
 
@@ -298,12 +299,12 @@ export default function Relatorios() {
 
     // Filtrar dados do mês atual
     const receitasMes = receitas.filter(r => {
-      const dataVenc = new Date(r.data_vencimento);
+      const dataVenc = parseDateSafe(r.data_vencimento);
       return dataVenc >= inicioMes && dataVenc <= fimMes;
     });
 
     const despesasMes = despesas.filter(d => {
-      const dataVenc = new Date(d.data_vencimento);
+      const dataVenc = parseDateSafe(d.data_vencimento);
       return dataVenc >= inicioMes && dataVenc <= fimMes;
     });
 
@@ -357,12 +358,12 @@ export default function Relatorios() {
     const dadosMensais = meses.map((mes, index) => {
       // Filtrar dados do mês
       const receitasMes = receitas.filter(r => {
-        const dataVenc = new Date(r.data_vencimento);
+        const dataVenc = parseDateSafe(r.data_vencimento);
         return dataVenc >= mes.inicio && dataVenc <= mes.fim;
       });
 
       const despesasMes = despesas.filter(d => {
-        const dataVenc = new Date(d.data_vencimento);
+        const dataVenc = parseDateSafe(d.data_vencimento);
         return dataVenc >= mes.inicio && dataVenc <= mes.fim;
       });
 
@@ -451,12 +452,12 @@ export default function Relatorios() {
     const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
 
     const receitasFiltradas = receitas.filter((r: any) => {
-      const dataVenc = new Date(r.data_vencimento);
+      const dataVenc = parseDateSafe(r.data_vencimento);
       return dataVenc >= inicioMes && dataVenc <= fimMes;
     });
 
     const despesasFiltradas = despesas.filter((d: any) => {
-      const dataVenc = new Date(d.data_vencimento);
+      const dataVenc = parseDateSafe(d.data_vencimento);
       return dataVenc >= inicioMes && dataVenc <= fimMes;
     });
 

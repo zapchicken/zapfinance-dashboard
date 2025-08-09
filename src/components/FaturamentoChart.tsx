@@ -12,6 +12,7 @@ import {
   Bar
 } from "recharts";
 import { formatCurrency } from "@/lib/utils";
+import { parseDateSafe } from "@/utils/date";
 
 interface FaturamentoChartProps {
   receitas: any[];
@@ -38,7 +39,7 @@ export default function FaturamentoChart({ receitas, selectedMonth }: Faturament
       const ultimoDia = new Date(ano, mes + 1, 0);
       
       const receitasPeriodo = receitas.filter(r => {
-        const dataReceita = new Date(r.data_vencimento);
+        const dataReceita = parseDateSafe(r.data_vencimento);
         return dataReceita >= primeiroDia && dataReceita <= ultimoDia;
       });
 
@@ -52,8 +53,8 @@ export default function FaturamentoChart({ receitas, selectedMonth }: Faturament
 
       // Somar faturamento por dia
       receitasPeriodo.forEach(r => {
-        const dataReceita = new Date(r.data_vencimento);
-        const dataStr = dataReceita.toISOString().split('T')[0];
+        const dataReceita = parseDateSafe(r.data_vencimento);
+        const dataStr = `${dataReceita.getFullYear()}-${String(dataReceita.getMonth() + 1).padStart(2, '0')}-${String(dataReceita.getDate()).padStart(2, '0')}`;
         faturamentoPorDia[dataStr] = (faturamentoPorDia[dataStr] || 0) + r.valor;
       });
 
