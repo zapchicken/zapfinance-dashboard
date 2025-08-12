@@ -295,12 +295,19 @@ export default function ContasReceber() {
     if (editId) {
       const contaSelecionada = contas.find(c => c.id === editId);
       if (contaSelecionada) {
+        console.log('🔍 Debug Editar - Excluindo registros:', {
+          data_recebimento: contaSelecionada.data_recebimento,
+          user_id: user.id
+        });
+        
         // Excluir todos os registros do mesmo grupo (mesma data de recebimento)
-        const { error: deleteError } = await supabase
+        const { error: deleteError, count } = await supabase
           .from('contas_receber')
           .delete()
           .eq('data_recebimento', contaSelecionada.data_recebimento)
           .eq('user_id', user.id);
+        
+        console.log('🔍 Debug Editar - Resultado exclusão:', { error: deleteError, count });
         
         if (deleteError) {
           alert("Erro ao excluir registros antigos: " + deleteError.message);
@@ -310,6 +317,8 @@ export default function ContasReceber() {
     }
 
     // Inserir novos registros
+    console.log('🔍 Debug Editar - Inserindo registros:', processedModalidades.filter(m => m.valorCalculado > 0));
+    
     for (const [idx, m] of processedModalidades.entries()) {
       if (m.valorCalculado <= 0) continue;
 
@@ -319,6 +328,10 @@ export default function ContasReceber() {
       const valorLiquido = valor - valorTaxa;
       const dataVenc = calcularDataVencimento(dataReceita, MODALIDADES[idx].regra);
       const dataReceb = calcularDataRecebimento(dataReceita, MODALIDADES[idx].regra);
+      
+      console.log(`🔍 Debug Editar - Inserindo ${m.nome}:`, {
+        valor, taxa, valorTaxa, valorLiquido, dataVenc, dataReceb
+      });
       
       const { error } = await supabase.from('contas_receber').insert({
         descricao: m.nome,
