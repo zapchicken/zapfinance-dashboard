@@ -295,19 +295,12 @@ export default function ContasReceber() {
     if (editId) {
       const contaSelecionada = contas.find(c => c.id === editId);
       if (contaSelecionada) {
-        console.log('🔍 Debug Editar - Excluindo registros:', {
-          data_recebimento: contaSelecionada.data_recebimento,
-          user_id: user.id
-        });
-        
         // Excluir todos os registros do mesmo grupo (mesma data de recebimento)
-        const { error: deleteError, count } = await supabase
+        const { error: deleteError } = await supabase
           .from('contas_receber')
           .delete()
           .eq('data_recebimento', contaSelecionada.data_recebimento)
           .eq('user_id', user.id);
-        
-        console.log('🔍 Debug Editar - Resultado exclusão:', { error: deleteError, count });
         
         if (deleteError) {
           alert("Erro ao excluir registros antigos: " + deleteError.message);
@@ -317,8 +310,6 @@ export default function ContasReceber() {
     }
 
     // Inserir novos registros
-    console.log('🔍 Debug Editar - Inserindo registros:', processedModalidades.filter(m => m.valorCalculado > 0));
-    
     for (const [idx, m] of processedModalidades.entries()) {
       if (m.valorCalculado <= 0) continue;
 
@@ -328,10 +319,6 @@ export default function ContasReceber() {
       const valorLiquido = valor - valorTaxa;
       const dataVenc = calcularDataVencimento(dataReceita, MODALIDADES[idx].regra);
       const dataReceb = calcularDataRecebimento(dataReceita, MODALIDADES[idx].regra);
-      
-      console.log(`🔍 Debug Editar - Inserindo ${m.nome}:`, {
-        valor, taxa, valorTaxa, valorLiquido, dataVenc, dataReceb
-      });
       
       const { error } = await supabase.from('contas_receber').insert({
         descricao: m.nome,
@@ -369,20 +356,27 @@ export default function ContasReceber() {
   };
 
   const handleEdit = (contaSelecionada: any) => {
-    // Filtrar todas as contas do mesmo grupo por data de vencimento (data da receita)
-    const grupoModalidades = contas.filter(
-      c => c.data_vencimento === contaSelecionada.data_vencimento
-    );
-
-    // Mapear para o formato de modalidadesValores
+    console.log('🔍 Debug handleEdit - Modalidade selecionada:', contaSelecionada.descricao);
+    
+    // Carregar apenas a modalidade específica que foi clicada
     setModalidadesValores(MODALIDADES.map(m => {
-      const encontrada = grupoModalidades.find(c => c.descricao === m.nome);
-      return {
-        nome: m.nome,
-        valor: encontrada ? String(encontrada.valor) : "",
-        taxa: encontrada ? String(encontrada.taxa_percentual ?? encontrada.taxa ?? "") : "",
-        banco_id: encontrada ? String(encontrada.banco_id) : ""
-      };
+      if (m.nome === contaSelecionada.descricao) {
+        // Carregar apenas a modalidade editada
+        return {
+          nome: m.nome,
+          valor: String(contaSelecionada.valor),
+          taxa: String(contaSelecionada.taxa_percentual ?? contaSelecionada.taxa ?? ""),
+          banco_id: String(contaSelecionada.banco_id || "")
+        };
+      } else {
+        // Zerar as outras modalidades
+        return {
+          nome: m.nome,
+          valor: "",
+          taxa: "",
+          banco_id: ""
+        };
+      }
     }));
 
     setDataReceita(contaSelecionada.data_vencimento); // ou outro campo de data
