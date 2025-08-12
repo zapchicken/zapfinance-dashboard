@@ -425,6 +425,7 @@ export default function ContasReceber() {
     console.log('🔍 Debug modalidadesMapeadas:', modalidadesMapeadas);
 
     setModalidadesValores(modalidadesMapeadas);
+    console.log('🔍 Estado modalidadesValores definido:', modalidadesMapeadas);
     setDataReceita(contaSelecionada.data_vencimento);
     setObs(contaSelecionada.observacoes || "");
     setViewId(contaSelecionada.id);
@@ -698,6 +699,14 @@ export default function ContasReceber() {
     const taxa = parseFloat(m.taxa.replace(/,/g, '.')) || 0;
     return sum + (valor - (valor * (taxa / 100)));
   }, 0);
+
+  // Log para debug dos totais
+  console.log('🔍 Debug totais calculados:', {
+    modalidadesValores,
+    totalValorModalidades,
+    totalTaxaModalidades,
+    totalLiquidoModalidades
+  });
 
   const handleValorKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, currentIndex: number) => {
     if (e.key === 'ArrowDown') {
