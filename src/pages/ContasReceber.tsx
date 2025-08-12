@@ -242,8 +242,8 @@ export default function ContasReceber() {
       
       // Se não contém operadores matemáticos, trata como número simples
       if (!/[\+\-\*\/]/.test(cleanExpr)) {
-        // Normaliza o número: remove pontos de milhar e troca vírgula de decimal por ponto
-        const normalizedExpr = cleanExpr.replace(/\./g, '').replace(/,/g, '.');
+        // Normaliza o número: troca vírgula de decimal por ponto (mantém ponto decimal)
+        const normalizedExpr = cleanExpr.replace(/,/g, '.');
         const result = parseFloat(normalizedExpr);
         return isNaN(result) ? 0 : result;
       }
@@ -808,16 +808,7 @@ export default function ContasReceber() {
                         const valorTaxa = valor * (taxa / 100);
                         const valorLiquido = valor - valorTaxa;
                         
-                        // Debug para verificar os valores
-                        if (viewId && m.valor) {
-                          console.log(`🔍 Debug cálculo ${m.nome}:`, {
-                            valorOriginal: m.valor,
-                            valorProcessado: valor,
-                            taxa: taxa,
-                            valorTaxa: valorTaxa,
-                            valorLiquido: valorLiquido
-                          });
-                        }
+
                         const dataRecebimento = calcularDataRecebimento(dataReceita, MODALIDADES[idx].regra);
                         return (
                           <tr key={m.nome} className="border-b">
