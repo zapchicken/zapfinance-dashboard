@@ -245,7 +245,7 @@ export default function ContasReceber() {
         // Normaliza o número: remove pontos de milhar e troca vírgula de decimal por ponto
         const normalizedExpr = cleanExpr.replace(/\./g, '').replace(/,/g, '.');
         const result = parseFloat(normalizedExpr);
-        return isNaN(result) ? 0 : Math.round(result * 100) / 100;
+        return isNaN(result) ? 0 : result;
       }
       
       // Para expressões matemáticas, normaliza e avalia
