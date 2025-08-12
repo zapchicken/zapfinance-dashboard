@@ -355,9 +355,9 @@ export default function ContasReceber() {
   };
 
   const handleEdit = (contaSelecionada: any) => {
-    // Filtrar todas as contas do mesmo grupo/data/receita
+    // Filtrar todas as contas do mesmo grupo por data de vencimento (data da receita)
     const grupoModalidades = contas.filter(
-      c => c.data_vencimento === contaSelecionada.data_vencimento && c.data_recebimento === contaSelecionada.data_recebimento
+      c => c.data_vencimento === contaSelecionada.data_vencimento
     );
 
     // Mapear para o formato de modalidadesValores
@@ -386,9 +386,9 @@ export default function ContasReceber() {
       contas: contas.slice(0, 3) // Primeiras 3 contas para debug
     });
 
-    // Filtrar todas as contas do mesmo grupo/data/receita
+    // Filtrar todas as contas do mesmo grupo por data de vencimento (data da receita)
     const grupoModalidades = contas.filter(
-      c => c.data_vencimento === contaSelecionada.data_vencimento && c.data_recebimento === contaSelecionada.data_recebimento
+      c => c.data_vencimento === contaSelecionada.data_vencimento
     );
 
     console.log('🔍 Debug grupoModalidades:', {
