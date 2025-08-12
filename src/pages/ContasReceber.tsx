@@ -210,7 +210,8 @@ export default function ContasReceber() {
       return `${yyyy}-${mm}-${dd}`;
     }
     if (regra === 'quarta_pos_semana') {
-      let data = new Date(ano, mes - 1, dia);
+      // Criar data com meio-dia para evitar problemas de fuso horário
+      let data = new Date(ano, mes - 1, dia, 12, 0, 0);
       const diaSemana = data.getDay();
       
       // Se a data base for domingo (0), vai para a quarta-feira da mesma semana
