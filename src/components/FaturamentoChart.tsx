@@ -35,13 +35,17 @@ export default function FaturamentoChart({ receitas, selectedMonth }: Faturament
 
     // Função para obter faturamento diário de um período
     const getFaturamentoDiario = (ano: number, mes: number) => {
-      const primeiroDia = new Date(ano, mes, 1);
-      const ultimoDia = new Date(ano, mes + 1, 0);
+      const primeiroDia = parseDateSafe(`${ano}-${String(mes + 1).padStart(2, '0')}-01`);
+      const ultimoDia = parseDateSafe(`${ano}-${String(mes + 1).padStart(2, '0')}-${new Date(ano, mes + 1, 0).getDate()}`);
       
       const receitasPeriodo = receitas.filter(r => {
         // Gráfico deve considerar a data da receita (data_vencimento)
         const dataReceita = parseDateSafe(r.data_vencimento);
-        return dataReceita >= primeiroDia && dataReceita <= ultimoDia;
+        const dentroDoPeriodo = dataReceita >= primeiroDia && dataReceita <= ultimoDia;
+        
+
+        
+        return dentroDoPeriodo;
       });
 
       const faturamentoPorDia: { [key: string]: number } = {};

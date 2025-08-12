@@ -461,8 +461,8 @@ export default function ContasReceber() {
     }
     const [ano, mes] = mesSelecionado.split('-').map(Number);
     return { 
-        primeiroDia: new Date(ano, mes - 1, 1), 
-        ultimoDia: new Date(ano, mes, 0) 
+        primeiroDia: parseDateSafe(`${ano}-${String(mes).padStart(2, '0')}-01`), 
+        ultimoDia: parseDateSafe(`${ano}-${String(mes).padStart(2, '0')}-${new Date(ano, mes, 0).getDate()}`) 
     };
   }, [mesSelecionado]);
 
@@ -497,6 +497,13 @@ export default function ContasReceber() {
       status: c.status,
       banco_id: c.banco_id
     })));
+    
+    // Debug: verificar se há lançamentos de 31/07
+    const lancamentos3107 = contas.filter(c => c.data_vencimento && c.data_vencimento.includes('2025-07-31'));
+    console.log('🔍 Lançamentos de 31/07 encontrados:', lancamentos3107.length);
+    if (lancamentos3107.length > 0) {
+      console.log('📋 Detalhes dos lançamentos de 31/07:', lancamentos3107);
+    }
     
     const filtradas = contas
       .filter(conta => {
@@ -555,15 +562,17 @@ export default function ContasReceber() {
           }
         }
 
-        // Filtro por data (mês selecionado)
-        const dataReferencia = conta.data_recebimento || conta.data_vencimento;
+        // Filtro por data (mês selecionado) - usar data_vencimento (data da receita)
+        const dataReferencia = conta.data_vencimento;
         if (!dataReferencia) {
-          console.log('❌ Conta sem data_recebimento nem data_vencimento:', conta.descricao);
+          console.log('❌ Conta sem data_vencimento:', conta.descricao);
           return false;
         }
         
         const data = parseDateSafe(dataReferencia);
         const matchesDate = data >= primeiroDia && data <= ultimoDia;
+        
+
         
         if (!matchesDate) {
           console.log('❌ Conta fora do período:', {

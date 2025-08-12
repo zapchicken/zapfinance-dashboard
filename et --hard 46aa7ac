@@ -1,0 +1,5 @@
+[33m1db2862[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Corrigir edição para manter outras modalidades - excluir apenas registro específico
+[33m2271471[m Corrigir problema de duplicação no Editar - carregar apenas modalidade específica
+[33m850e6ee[m Adicionar logs de debug para investigar problema de duplicação no Editar
+[33m46aa7ac[m Corrigir problema de duplicação no botão Editar - excluir por data_recebimento
+[33mb78d54b[m Corrigir função safeEval - não remover ponto decimal dos números
