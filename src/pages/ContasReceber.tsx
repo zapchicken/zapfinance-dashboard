@@ -393,12 +393,18 @@ export default function ContasReceber() {
 
     console.log('🔍 Debug grupoModalidades:', {
       grupoModalidades: grupoModalidades.length,
-      modalidades: grupoModalidades.map(c => ({ descricao: c.descricao, valor: c.valor }))
+      modalidades: grupoModalidades.map(c => ({ 
+        descricao: c.descricao, 
+        valor: c.valor,
+        data_vencimento: c.data_vencimento,
+        data_recebimento: c.data_recebimento
+      }))
     });
 
     // Mapear para o formato de modalidadesValores
     const modalidadesMapeadas = MODALIDADES.map(m => {
       const encontrada = grupoModalidades.find(c => c.descricao === m.nome);
+      console.log(`🔍 Procurando modalidade "${m.nome}":`, encontrada ? '✅ Encontrada' : '❌ Não encontrada');
       return {
         nome: m.nome,
         valor: encontrada ? String(encontrada.valor) : "",
