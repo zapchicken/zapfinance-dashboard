@@ -380,13 +380,24 @@ export default function ContasReceber() {
   };
 
   const handleView = (contaSelecionada: any) => {
+    console.log('🔍 Debug handleView:', {
+      contaSelecionada,
+      totalContas: contas.length,
+      contas: contas.slice(0, 3) // Primeiras 3 contas para debug
+    });
+
     // Filtrar todas as contas do mesmo grupo/data/receita
     const grupoModalidades = contas.filter(
       c => c.data_vencimento === contaSelecionada.data_vencimento && c.data_recebimento === contaSelecionada.data_recebimento
     );
 
+    console.log('🔍 Debug grupoModalidades:', {
+      grupoModalidades: grupoModalidades.length,
+      modalidades: grupoModalidades.map(c => ({ descricao: c.descricao, valor: c.valor }))
+    });
+
     // Mapear para o formato de modalidadesValores
-    setModalidadesValores(MODALIDADES.map(m => {
+    const modalidadesMapeadas = MODALIDADES.map(m => {
       const encontrada = grupoModalidades.find(c => c.descricao === m.nome);
       return {
         nome: m.nome,
@@ -394,8 +405,11 @@ export default function ContasReceber() {
         taxa: encontrada ? String(encontrada.taxa_percentual ?? encontrada.taxa ?? "") : "",
         banco_id: encontrada ? String(encontrada.banco_id) : ""
       };
-    }));
+    });
 
+    console.log('🔍 Debug modalidadesMapeadas:', modalidadesMapeadas);
+
+    setModalidadesValores(modalidadesMapeadas);
     setDataReceita(contaSelecionada.data_vencimento);
     setObs(contaSelecionada.observacoes || "");
     setViewId(contaSelecionada.id);
@@ -712,6 +726,7 @@ export default function ContasReceber() {
           if (!open) {
             setFormData({ descricao: '', cliente_nome: '', categoria_id: '', valor: '', data_vencimento: '', data_recebimento: '', observacoes: '', status: 'pendente', banco_id: "" });
             setEditId(null);
+            setViewId(null); // Limpar viewId quando fechar o diálogo
           }
         }}>
           {viewId === null && (
