@@ -105,7 +105,7 @@ export default function ContasReceber() {
 
   // Atualizar modalidadesValores quando abrir o formulário e bancos estiverem carregados
   useEffect(() => {
-    if (isDialogOpen && !editId && bancos.length > 0 && modalidadesReceita.length > 0) {
+    if (isDialogOpen && !editId && !viewId && bancos.length > 0 && modalidadesReceita.length > 0) {
       setModalidadesValores(MODALIDADES.map(m => {
         const found = modalidadesReceita.find((mod: any) => mod.nome.toLowerCase() === m.nome.toLowerCase());
         const bancoPadrao = bancos.find(b => b.nome.toUpperCase() === BANCO_PADRAO_MODALIDADE[m.nome])?.id || "";
@@ -117,7 +117,7 @@ export default function ContasReceber() {
         };
       }));
     }
-  }, [isDialogOpen, bancos, editId, modalidadesReceita]);
+  }, [isDialogOpen, bancos, editId, viewId, modalidadesReceita]);
 
   
 
@@ -700,13 +700,7 @@ export default function ContasReceber() {
     return sum + (valor - (valor * (taxa / 100)));
   }, 0);
 
-  // Log para debug dos totais
-  console.log('🔍 Debug totais calculados:', {
-    modalidadesValores,
-    totalValorModalidades,
-    totalTaxaModalidades,
-    totalLiquidoModalidades
-  });
+
 
   const handleValorKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, currentIndex: number) => {
     if (e.key === 'ArrowDown') {
