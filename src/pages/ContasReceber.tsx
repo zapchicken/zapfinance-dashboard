@@ -212,8 +212,18 @@ export default function ContasReceber() {
     if (regra === 'quarta_pos_semana') {
       let data = new Date(ano, mes - 1, dia);
       const diaSemana = data.getDay();
-      data.setDate(data.getDate() + (7 - diaSemana)); // próximo domingo
-      data.setDate(data.getDate() + (3)); // próxima quarta-feira
+      
+      // Se a data base for domingo (0), vai para a quarta-feira da mesma semana
+      // Se for de segunda a sábado (1-6), vai para a quarta-feira da próxima semana
+      if (diaSemana === 0) {
+        // Domingo: vai para quarta-feira da mesma semana (adiciona 3 dias)
+        data.setDate(data.getDate() + 3);
+      } else {
+        // Segunda a sábado: vai para quarta-feira da próxima semana
+        data.setDate(data.getDate() + (7 - diaSemana)); // próximo domingo
+        data.setDate(data.getDate() + 3); // próxima quarta-feira
+      }
+      
       const yyyy = data.getFullYear();
       const mm = String(data.getMonth() + 1).padStart(2, '0');
       const dd = String(data.getDate()).padStart(2, '0');
