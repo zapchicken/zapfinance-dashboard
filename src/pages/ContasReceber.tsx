@@ -807,6 +807,17 @@ export default function ContasReceber() {
                         const taxa = parseFloat(m.taxa) || 0;
                         const valorTaxa = valor * (taxa / 100);
                         const valorLiquido = valor - valorTaxa;
+                        
+                        // Debug para verificar os valores
+                        if (viewId && m.valor) {
+                          console.log(`🔍 Debug cálculo ${m.nome}:`, {
+                            valorOriginal: m.valor,
+                            valorProcessado: valor,
+                            taxa: taxa,
+                            valorTaxa: valorTaxa,
+                            valorLiquido: valorLiquido
+                          });
+                        }
                         const dataRecebimento = calcularDataRecebimento(dataReceita, MODALIDADES[idx].regra);
                         return (
                           <tr key={m.nome} className="border-b">
