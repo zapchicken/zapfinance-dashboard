@@ -295,15 +295,14 @@ export default function ContasReceber() {
     if (editId) {
       const contaSelecionada = contas.find(c => c.id === editId);
       if (contaSelecionada) {
-        // Excluir todos os registros do mesmo grupo (mesma data de recebimento)
+        // Excluir apenas o registro específico que está sendo editado
         const { error: deleteError } = await supabase
           .from('contas_receber')
           .delete()
-          .eq('data_recebimento', contaSelecionada.data_recebimento)
-          .eq('user_id', user.id);
+          .eq('id', editId);
         
         if (deleteError) {
-          alert("Erro ao excluir registros antigos: " + deleteError.message);
+          alert("Erro ao excluir registro antigo: " + deleteError.message);
           return;
         }
       }
