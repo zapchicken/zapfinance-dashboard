@@ -405,6 +405,15 @@ export default function ContasReceber() {
     const modalidadesMapeadas = MODALIDADES.map(m => {
       const encontrada = grupoModalidades.find(c => c.descricao === m.nome);
       console.log(`🔍 Procurando modalidade "${m.nome}":`, encontrada ? '✅ Encontrada' : '❌ Não encontrada');
+      
+      if (encontrada) {
+        console.log(`💰 Valor encontrado para "${m.nome}":`, {
+          valorOriginal: encontrada.valor,
+          valorConvertido: String(encontrada.valor),
+          tipo: typeof encontrada.valor
+        });
+      }
+      
       return {
         nome: m.nome,
         valor: encontrada ? String(encontrada.valor) : "",
